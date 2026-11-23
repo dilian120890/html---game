@@ -649,8 +649,8 @@ function who() {
     const hits = ROSTER.filter(r => !q || fold(r.name).includes(q));
     const typed = inp.value.trim(), exact = ROSTER.some(r => fold(r.name) === fold(typed));
     list.innerHTML = (hits.length ? hits.map(r => `<button data-id="${r.id}" class="${r.id === SID ? 'me' : ''}"><span>${esc(r.name)}</span><small>⭐ ${starsOf(r.id)}</small></button>`).join('')
-      : `<p class="note">${ROSTER.length ? 'Không tìm thấy tên này.' : 'Lớp chưa có danh sách.'} Em gõ đầy đủ họ tên rồi bấm nút thêm tên nhé.</p>`)
-      + (typed.length >= 4 && !exact ? `<button data-new class="addme"><span>➕ Thêm tên: <b>${esc(typed)}</b></span><small>Bạn mới</small></button>` : '');
+      : `<p class="note">${ROSTER.length ? 'Không tìm thấy tên này.' : 'Lớp chưa có danh sách.'} ${ROSTER.some(r => !r.extra) ? 'Em gõ lại hoặc nhờ cô giáo giúp nhé.' : 'Em gõ đầy đủ họ tên rồi bấm nút thêm tên nhé.'}</p>`)
+      + (typed.length >= 4 && !exact && !ROSTER.some(r => !r.extra) ? `<button data-new class="addme"><span>➕ Thêm tên: <b>${esc(typed)}</b></span><small>Bạn mới</small></button>` : '');
     list.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { setStudent(b.dataset.id); home(); });
     const nb = list.querySelector('[data-new]'); if (nb) nb.onclick = () => { const id = newKid(typed); setStudent(id); home(); };
   };
