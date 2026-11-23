@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hộ chiếu nhà thám hiểm</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -258,6 +261,7 @@ img{display:block;max-width:100%}
 <script src="words.js"></script>
 <script src="enq.js"></script>
 <script src="roster.js"></script>
+<script src="../sheet-config.js"></script>
 <script>
 const $ = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstElementChild; };
 const isImg = (s) => typeof s === 'string' && /^\d\d_/.test(s);
@@ -309,6 +313,7 @@ function save() {
     const id = SID, body = { p: JSON.parse(JSON.stringify(ALL[id] || {})), at: Date.now() };
     saving = saving.then(() => DB.collection('progress').doc(id).set(body)).catch(() => { SYNC = 'error'; });
   }
+  sheetPush(SID);
 }
 (async () => {
   try {
@@ -327,6 +332,34 @@ function save() {
     }, () => { SYNC = 'error'; });
   } catch (e) {}
 })();
+
+/* Lưu tiến độ lên Google Sheet của cô khi chạy trên GitHub (địa chỉ máy chủ ở file sheet-config.js).
+   Trên link Claude, tiến độ dùng bảng chung của Claude như cũ. */
+const SHEET = (typeof SHEET_URL !== 'undefined' && !window.claude && SHEET_URL) || '';
+const mergeP = (a, b) => { a = a || {}; Object.entries(b || {}).forEach(([n, v]) => { if (!a[n] || ((v && v.at) || 0) > (a[n].at || 0)) a[n] = v; }); return a; };
+let lastPull = 0;
+function sheetPull() {
+  if (!SHEET || Date.now() - lastPull < 15000) return;
+  lastPull = Date.now(); if (SYNC !== 'sheet') SYNC = 'wait';
+  fetch(SHEET + '?app=tnxh3&t=' + Date.now()).then(r => r.json()).then(j => {
+    (j.rows || []).forEach(r => {
+      if (!r || !r.id) return;
+      if (r.name && typeof addKid === 'function') addKid(r.id, r.name);
+      ALL[r.id] = mergeP(ALL[r.id], r.p);
+    });
+    if (SID) PROG = ALL[SID] = ALL[SID] || {};
+    try { localStorage.setItem('tnxh3-all', JSON.stringify(ALL)); } catch (e) {}
+    SYNC = 'sheet';
+    if (REDRAW === home || REDRAW === board || REDRAW === who) { const y = window.scrollY; REDRAW(); window.scrollTo(0, y); }
+  }).catch(() => { SYNC = 'error'; });
+}
+function sheetPush(id) {
+  if (!SHEET || !id) return;
+  const body = JSON.stringify({ app: 'tnxh3', cls: CLASS_NAME, id, name: studentName(id), n: STAGES.length, p: ALL[id] || {} });
+  fetch(SHEET, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body })
+    .then(r => r.json()).then(j => { SYNC = j && j.ok ? 'sheet' : 'error'; }).catch(() => { SYNC = 'error'; });
+}
+setTimeout(sheetPull, 0);
 
 /* đọc to (nếu máy có giọng tiếng Việt) */
 let BI = true; try { BI = localStorage.getItem('tnxh3-bi') !== '0'; } catch (e) {}
@@ -633,6 +666,7 @@ const fold = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/
 const starsOf = (id) => STAGES.reduce((a, s) => a + (((ALL[id] || {})[s.n] || {}).stars || 0), 0);
 const doneOf = (id) => STAGES.filter(s => ((ALL[id] || {})[s.n] || {}).done).length;
 function who() {
+  sheetPull();
   REDRAW = who; setTheme(6); window.scrollTo(0, 0);
   const keep = (document.getElementById('who-q') || {}).value || '';
   app.innerHTML = bar(false).replace(/<button class="pill me"[^]*?<\/button>/, '') + `
@@ -659,6 +693,7 @@ function who() {
 }
 function syncNote() {
   return SYNC === 'db' ? '✅ Tiến độ được lưu chung cho cả lớp, cô giáo xem được trong Bảng tiến độ.'
+    : SYNC === 'sheet' ? '✅ Tiến độ được lưu lên Google Sheet của cô: đổi máy vẫn giữ nguyên.'
     : SYNC === 'wait' ? '⏳ Đang tải tiến độ của cả lớp…'
     : SYNC === 'error' ? '⚠️ Chưa lưu được lên bảng chung, tiến độ tạm lưu trên máy này.'
     : 'Tiến độ đang lưu trên máy này.';
@@ -667,6 +702,7 @@ function syncNote() {
 /* ───────── BẢNG TIẾN ĐỘ ───────── */
 let BSORT = 'list';
 function board() {
+  sheetPull();
   REDRAW = board; setTheme(6); window.scrollTo(0, 0);
   const rows = ROSTER.map((r, i) => ({ i: i + 1, id: r.id, name: r.name, st: starsOf(r.id), dn: doneOf(r.id),
     tries: STAGES.reduce((a, s) => a + (((ALL[r.id] || {})[s.n] || {}).tries || 0), 0),
