@@ -1,0 +1,73 @@
+/* Song ngữ Việt – Anh cho app TNXH 1.
+   WORDS[chặng] = [mã ảnh hoặc null, từ tiếng Việt, từ tiếng Anh]  → thẻ "Từ vựng" trong Em khám phá + trò nối từ.
+   EN = từ điển nhãn ngắn trong câu hỏi (đáp án, nhóm, thẻ nối). */
+const TITLE_EN = {
+  1: 'My family', 2: 'My house', 3: 'Things at home', 4: 'Safety at home', 5: 'Review: Family',
+  6: 'My classroom', 7: 'Exploring my school', 8: 'Fun at school', 9: 'Review: School',
+  10: 'Places around me', 11: 'People where I live', 12: 'Happy Tet', 13: 'Road safety', 14: 'Review: Community',
+};
+const TOPIC_EN = { gd: 'Family', th: 'School', cd: 'Local community' };
+
+const WORDS = {
+  1: [['01_1', 'gia đình', 'family'], ['01_2_1', 'ông', 'grandfather'], ['01_2_2', 'bà', 'grandmother'], ['01_2_3', 'bố', 'father'],
+      ['01_2_4', 'mẹ', 'mother'], ['01_2_5', 'anh trai', 'brother'], ['01_2_6', 'em gái', 'sister'], ['01_5_1', 'em bé', 'baby']],
+  2: [['02_1', 'ngôi nhà', 'house'], [null, 'phòng khách', 'living room'], [null, 'bếp', 'kitchen'], [null, 'phòng ngủ', 'bedroom'],
+      [null, 'phòng tắm', 'bathroom'], ['02_3_2', 'chung cư', 'apartment building'], ['02_3_3', 'nhà sàn', 'stilt house'], ['02_2', 'địa chỉ', 'address']],
+  3: [['03_1_1', 'giường', 'bed'], ['03_1_3', 'ghế sofa', 'sofa'], ['03_1_4', 'ti vi', 'TV'], ['03_1_8', 'quạt', 'fan'],
+      ['03_1_9', 'tủ lạnh', 'fridge'], ['03_1_10', 'máy giặt', 'washing machine'], ['03_2_1', 'gối', 'pillow'], ['03_2_5', 'cốc', 'cup'],
+      [null, 'cứng', 'hard'], [null, 'mềm', 'soft']],
+  4: [['04_2_1', 'dao', 'knife'], ['04_2_2', 'ấm nước', 'kettle'], ['04_2_3', 'ổ cắm điện', 'socket'], ['04_2_4', 'kéo', 'scissors'],
+      ['04_4_1', 'xe cứu hỏa', 'fire engine'], ['04_4_2', 'xe cứu thương', 'ambulance'], [null, 'nóng', 'hot'], [null, 'nguy hiểm', 'dangerous']],
+  5: [['05_1_1', 'áo', 'shirt'], ['05_1_2', 'sách', 'book'], ['05_1_3', 'dép', 'slippers'], ['05_1_4', 'ô tô đồ chơi', 'toy car'],
+      ['05_1_5', 'tủ quần áo', 'wardrobe'], ['05_1_6', 'giá sách', 'bookshelf'], ['05_1_8', 'hộp đồ chơi', 'toy box'], [null, 'gọn gàng', 'tidy']],
+  6: [['06_1', 'lớp học', 'classroom'], ['06_2_1', 'bút chì', 'pencil'], ['06_2_2', 'tẩy', 'eraser'], ['06_2_3', 'bút mực', 'pen'],
+      ['06_2_4', 'vở', 'notebook'], ['06_2_6', 'bút sáp màu', 'crayons'], ['06_2_8', 'kéo', 'scissors'], ['06_2_9', 'hồ dán', 'glue'],
+      ['06_2_11', 'thước kẻ', 'ruler'], ['06_2_12', 'gọt bút chì', 'pencil sharpener']],
+  7: [['07_1', 'trường học', 'school'], ['07_2_1', 'cô giáo', 'teacher'], ['07_2_2', 'hiệu trưởng', 'principal'], ['07_2_5', 'bác bảo vệ', 'security guard'],
+      ['07_3_2', 'thư viện', 'library'], ['07_3_1', 'phòng y tế', 'school clinic'], ['07_3_4', 'nhà ăn', 'canteen'], ['07_3_5', 'phòng âm nhạc', 'music room']],
+  8: [['08_1', 'giờ ra chơi', 'break time'], ['08_2_1', 'nhảy dây', 'jump rope'], ['08_2_2', 'đá cầu', 'shuttlecock kicking'], ['08_2_4', 'trèo cây', 'climb a tree'],
+      ['08_4', 'bong bóng', 'bubbles'], ['08_5_3', 'rửa tay', 'wash hands'], [null, 'an toàn', 'safe'], [null, 'chơi', 'play']],
+  9: [['09_1_1', 'lau bảng', 'clean the board'], ['09_1_2', 'quét nhà', 'sweep the floor'], ['09_1_4', 'tưới cây', 'water the plants'],
+      ['09_1_5', 'đổ rác', 'take out the trash'], ['09_1_6', 'lau bàn', 'wipe the desk'], ['09_2_2', 'sạch', 'clean'], ['09_2_1', 'bẩn', 'dirty']],
+  10: [['10_1', 'làng quê', 'countryside'], ['10_2', 'thành phố', 'city'], ['10_3_1', 'núi', 'mountain'], ['10_3_2', 'sông', 'river'],
+       ['10_3_4', 'biển', 'sea'], ['10_3_5', 'mặt trời', 'sun'], ['10_3_3', 'cây', 'tree'], ['10_3_8', 'cây cầu', 'bridge'],
+       ['10_4_1', 'lá cây', 'leaf'], ['10_4_4', 'bông hoa', 'flower']],
+  11: [['11_0_1', 'bác sĩ', 'doctor'], ['11_0_2', 'giáo viên', 'teacher'], ['11_0_3', 'nông dân', 'farmer'], ['11_0_4', 'lính cứu hỏa', 'firefighter'],
+       ['11_0_5', 'đầu bếp', 'cook'], ['11_0_6', 'thợ xây', 'builder'], ['11_0_7', 'bưu tá', 'postman'], ['11_2_1', 'bệnh viện', 'hospital'], ['11_2_6', 'chợ', 'market']],
+  12: [['12_1', 'Tết', 'Lunar New Year'], ['12_2_1', 'bánh chưng', 'square sticky rice cake'], ['12_2_2', 'hoa đào', 'peach blossom'],
+       ['12_2_3', 'cây quất', 'kumquat tree'], ['12_2_5', 'lì xì', 'lucky money'], ['12_2_7', 'bánh trung thu', 'mooncake'],
+       ['12_2_8', 'đèn ông sao', 'star lantern'], ['12_3_5', 'múa lân', 'lion dance']],
+  13: [['13_3_1', 'đèn đỏ', 'red light'], ['13_3_2', 'đèn vàng', 'yellow light'], ['13_3_3', 'đèn xanh', 'green light'], ['13_2_2', 'tàu hỏa', 'train'],
+       ['13_2_3', 'tàu thủy', 'ship'], ['13_3_7', 'mũ bảo hiểm', 'helmet'], ['13_3_6', 'vạch kẻ đường', 'zebra crossing'], ['13_6_1', 'áo phản quang', 'reflective vest']],
+  14: [['01_1', 'gia đình', 'family'], ['07_1', 'trường học', 'school'], ['10_2', 'thành phố', 'city'], ['11_0_1', 'bác sĩ', 'doctor'],
+       ['12_1', 'Tết', 'Lunar New Year'], ['13_3_1', 'dừng lại', 'stop'], ['13_3_3', 'đi', 'go'], ['13_3_7', 'mũ bảo hiểm', 'helmet']],
+};
+
+const EN = {
+  'Nên làm': 'Should do', 'Không nên': "Shouldn't do", 'Không nên làm': "Shouldn't do", 'Đúng': 'True', 'Sai': 'False',
+  'Ông': 'Grandfather', 'Bà': 'Grandmother', 'Bố': 'Father', 'Mẹ': 'Mother',
+  'Hai thế hệ': 'Two generations', 'Ba thế hệ': 'Three generations', '4 người': '4 people', '5 người': '5 people', '6 người': '6 people',
+  'Phòng khách': 'Living room', 'Bếp': 'Kitchen', 'Phòng ngủ': 'Bedroom', 'Phòng tắm': 'Bathroom', 'Trong bếp': 'In the kitchen',
+  'Nhà ống': 'Tube house', 'Nhà sàn': 'Stilt house', 'Biệt thự': 'Villa', 'Nhà nổi': 'Floating house',
+  'Gọn gàng': 'Tidy', 'Bừa bộn': 'Messy', 'Dùng điện': 'Uses electricity', 'Không dùng điện': 'No electricity',
+  'Cứng': 'Hard', 'Mềm': 'Soft', 'Thấm nước': 'Absorbs water', 'Không thấm nước': 'Waterproof',
+  'Tấm ni lông': 'Plastic sheet', 'Chiếc khăn bông': 'Towel', 'Tờ bìa giấy': 'Cardboard', 'Khăn bông': 'Towel', 'Túi ni lông': 'Plastic bag', 'Thìa inox': 'Steel spoon',
+  'Bỏng': 'Burn', 'Đứt tay': 'Cut', 'Điện giật': 'Electric shock', 'Ấm nước sôi': 'Boiling kettle', 'Dao sắc': 'Sharp knife', 'Ổ cắm điện': 'Socket',
+  'Bàn là đang nóng': 'Hot iron', 'Mảnh cốc vỡ': 'Broken glass', 'Dây điện bị hở': 'Exposed wire', '114 – Cứu hỏa': 'Fire', '115 – Cấp cứu': 'Ambulance',
+  'Tủ quần áo': 'Wardrobe', 'Giá sách': 'Bookshelf', 'Kệ giày dép': 'Shoe rack', 'Hộp đồ chơi': 'Toy box', 'Trên giường': 'On the bed', 'Trong tủ lạnh': 'In the fridge', 'Máy giặt': 'Washing machine',
+  'Bảng lớp': 'Board', 'Thùng rác': 'Trash bin', 'Để viết': 'For writing', 'Để vẽ': 'For drawing', 'Để cắt dán': 'For cutting and gluing',
+  'Bảng con': 'Mini board', 'Hồ dán': 'Glue', 'Màu nước': 'Watercolours', 'Thước kẻ': 'Ruler',
+  'Dạy học': 'Teaching', 'Chăm sóc sức khỏe': 'Health care', 'Trông giữ trường': 'Guarding the school', 'Nấu ăn cho học sinh': 'Cooking for students', 'Trên cột cờ': 'On the flagpole',
+  'An toàn': 'Safe', 'Chưa an toàn': 'Not safe', 'Ném đá vào nhau': 'Throwing stones', 'Xô đẩy trên cầu thang': 'Pushing on the stairs',
+  'Lau bảng': 'Clean the board', 'Quét lớp': 'Sweep the classroom', 'Tưới cây': 'Water the plants', 'Đổ rác': 'Take out the trash',
+  'Thứ Hai': 'Monday', 'Thứ Ba': 'Tuesday', 'Thứ Tư': 'Wednesday', 'Thứ Năm': 'Thursday', 'Thứ Sáu': 'Friday',
+  'Làng quê': 'Countryside', 'Thành phố': 'City', 'Con trâu': 'Buffalo', 'Con voi': 'Elephant', 'Con hổ': 'Tiger',
+  'Tự nhiên': 'Natural', 'Con người làm ra': 'Man-made', 'Của cây': 'From plants', 'Của con vật': 'From animals', 'Đá, sỏi': 'Stones',
+  'Bác sĩ': 'Doctor', 'Đầu bếp': 'Cook', 'Thợ xây': 'Builder', 'Bác nông dân': 'Farmer', 'Cô giáo': 'Teacher', 'Bưu tá': 'Postman',
+  'Trạm cứu hỏa': 'Fire station', 'Chợ': 'Market', 'Bưu điện': 'Post office',
+  'Hoa đào': 'Peach blossom', 'Hoa sen': 'Lotus', 'Hoa hướng dương': 'Sunflower', 'Bánh chưng': 'Square sticky rice cake', 'Cây quất': 'Kumquat tree', 'Mứt Tết': 'Tet candied fruits',
+  'Tết Nguyên đán': 'Lunar New Year', 'Tết Trung thu': 'Mid-Autumn Festival', 'Tết cổ truyền': 'Traditional New Year', 'Ngày khai giảng': 'First day of school',
+  'Đường bộ': 'Road', 'Đường sắt': 'Railway', 'Đường thủy': 'Waterway', 'Phản quang': 'Reflective', 'Không phản quang': 'Not reflective',
+  'Cấm người đi bộ': 'No pedestrians', 'Người đi bộ sang ngang': 'Pedestrian crossing', 'Đường dành cho người đi bộ': 'Pedestrian path', 'Chú ý trẻ em': 'Children crossing',
+};
+Object.values(WORDS).flat().forEach(([, vi, en]) => { const k = vi[0].toUpperCase() + vi.slice(1); if (!EN[k]) EN[k] = en[0].toUpperCase() + en.slice(1); });
