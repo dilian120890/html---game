@@ -1035,7 +1035,7 @@ function home() {
     STAGES.map(s => { const g = PROG[s.n] && PROG[s.n].done; return `<div class="s${g ? ' got' : ''}" title="Chặng ${s.n}"><img src="${src(s.sticker || s.badge)}" alt="Phần thưởng chặng ${s.n}"></div>`; }).join('') +
     `</div><p class="note">${syncNote()} ${all ? '' : 'Hoàn thành cả 14 chặng để nhận cúp vàng!'}</p>
     <div class="row">${all ? `<button class="btn" data-final>🏆 Xem màn chúc mừng</button>` : ''}<button class="btn ghost" data-board>📊 Xem bảng tiến độ cả lớp</button></div></section>`;
-  app.innerHTML = h;
+  app.innerHTML = h; bindBar(app);
   app.querySelectorAll('[data-st]').forEach(b => b.onclick = () => explore(+b.dataset.st));
   app.querySelectorAll('.album [data-board]').forEach(b => b.onclick = board);
   const f = app.querySelector('[data-final]'); if (f) f.onclick = finale;
