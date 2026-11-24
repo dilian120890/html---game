@@ -1,6 +1,6 @@
 /**
  * Lưu tiến độ học sinh của các app ôn tập vào Google Sheet này.
- * Mỗi app một trang tính (tnxh1, tnxh2, tnxh3). Mỗi học sinh một dòng.
+ * Mỗi app một trang tính (tnxh1, tnxh2, tnxh3, cn3). Mỗi học sinh một dòng.
  * Cột G ("Dữ liệu") là dữ liệu của app, cô không cần sửa.
  */
 var HEAD = ['Mã', 'Lớp', 'Họ và tên', 'Tổng sao', 'Số chặng qua', 'Cập nhật', 'Dữ liệu'];
