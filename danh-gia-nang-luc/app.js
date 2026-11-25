@@ -134,7 +134,7 @@ function evidences(id, c, per) {
       if (Object.keys(rv).length) {
         const r = done / n, M = MAXLV();
         const lv = M === 4 ? (r >= .8 ? 4 : r >= .65 ? 3 : r >= .5 ? 2 : 1) : (r >= .8 ? 3 : r >= .5 ? 2 : 1);
-        out.push({ src: 'app', lv, date: per.to < today() ? per.to : today(), label: 'App ôn tập: hoàn thành ' + done + '/' + n + ' chặng', w: 1 });
+        out.push({ src: 'app', lv, date: per.to < today() ? per.to : today(), label: 'App: xong ' + done + '/' + n + ' chặng', w: 1 });
       }
     } else {
       ai.stages.forEach(([sn, title]) => {
@@ -358,7 +358,7 @@ function viewStudent() {
    ${notes.length ? `<div class="card"><h3>Ghi chú quan sát của cô</h3>${notes.map(([d, t, b]) => `<div class="stage"><span>📝 ${esc(t)}</span><span class="mute">${vn(d)}${b ? ' · ' + esc(b) : ''}</span></div>`).join('')}</div>` : ''}
    <div class="card"><h2>Biểu hiện và minh chứng</h2><div class="tblw" style="max-height:none"><table><thead><tr><th>Mã</th><th>Biểu hiện</th><th>Minh chứng (mới nhất trước)</th><th>Tự tính</th><th>Cô chốt</th></tr></thead><tbody>
    ${S.rows.map(({ c, a }) => `<tr><td><b>${esc(c.code)}</b><div class="mute">${GROUPS[c.g]}</div></td><td style="min-width:300px;font-size:13.5px">${esc(c.name)}<div class="mute">${esc(c.bloom || '')} · ${esc(c.measure || '')}</div></td>
-    <td><div class="ev">${a.ev.map(e => `<span class="${e.src}" title="${esc(e.label)}">${e.src === 'gv' ? '👁 ' + vn(e.date).slice(0, 5) : '📱 ' + esc(e.label.replace(/^App: /, '').slice(0, 26))} ${lvObj(e.lv).k}</span>`).join('') || '<span class="mute">—</span>'}</div>${a.gap ? '<div class="gap">Cần thêm minh chứng (tối thiểu 2)</div>' : ''}
+    <td><div class="ev">${a.ev.map(e => `<span class="${e.src}" title="${esc(e.label)}">${e.src === 'gv' ? '👁 ' + vn(e.date).slice(0, 5) : '📱 ' + esc(e.label.replace(/^App: /, '').slice(0, 34))} ${lvObj(e.lv).k}</span>`).join('') || '<span class="mute">—</span>'}</div>${a.gap ? '<div class="gap">Cần thêm minh chứng (tối thiểu 2)</div>' : ''}
 </td>
     <td>${lvChip(a.auto)}</td><td><select data-ov="${esc(c.code)}" ${ro ? 'disabled' : ''}><option value="0">Tự động</option>${SC().levels.map(l => `<option value="${l.v}" ${a.ov === l.v ? 'selected' : ''}>${l.k}</option>`).join('')}</select></td></tr>`).join('')}
    </tbody></table></div></div>
