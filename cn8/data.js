@@ -230,7 +230,7 @@ const STAGES = [
   tasks: ['Kể tên 5 dụng cụ cơ khí có trong nhà và công dụng.', 'Phỏng vấn một người làm nghề cơ khí (thợ sửa xe, thợ hàn…).', 'Lập bảng nội quy an toàn khi thực hành ở xưởng.'] },
 /* ───── 8 ★ ───── */
 { n: 8, t: 2, star: true, exam: true, title: 'Đề ôn giữa học kì 1', cover: '00_1', sticker: 'b04',
-  examTitle: 'Đề ôn kiểm tra giữa học kì 1 – Công nghệ 8', examNote: 'Phần I: Trắc nghiệm nhiều lựa chọn. Phần II: Đúng/Sai. Phần III: Trả lời ngắn. Phần IV: Tự luận.',
+  examTitle: 'Đề ôn kiểm tra giữa học kì 1 – Công nghệ 8', examNote: 'Phần I: 8 câu trắc nghiệm (4 điểm). Phần II: 2 câu Đúng/Sai (2 điểm). Phần III: 2 câu trả lời ngắn (1 điểm). Phần IV: Tự luận (3 điểm). Thời gian làm bài 45 phút.',
   recall: [
     { img: 'kho', fit: true, t: '**Tiêu chuẩn bản vẽ:** khổ giấy (A4 = 297 × 210 mm), tỉ lệ, nét vẽ, chữ viết, ghi kích thước (mm).' },
     { img: 'drawA', fit: true, t: '**Hình chiếu:** đứng (trước tới), bằng (trên xuống, đặt dưới), cạnh (trái sang, đặt bên phải).' },
@@ -244,19 +244,19 @@ const STAGES = [
     { label: 'Các loại bản vẽ', color: '#F28C28', img: 'matbang', items: ['Bản vẽ {{chi tiết}}', 'Bản vẽ {{lắp}}', 'Bản vẽ {{nhà}}'] }
   ] },
   q: [
-    { part: 'Phần I · Câu 1', t: 'mcq', lv: 1, q: 'Nét liền đậm dùng để vẽ:', o: ['Đường bao thấy, cạnh thấy', 'Đường tâm', 'Đường kích thước', 'Cạnh khuất'], a: 0 },
-    { part: 'Phần I · Câu 2', t: 'mcq', lv: 1, q: 'Tỉ lệ 1:5 là tỉ lệ:', o: ['Thu nhỏ', 'Phóng to', 'Nguyên hình', 'Không xác định'], a: 0 },
-    { part: 'Phần I · Câu 3', t: 'mcq', lv: 1, q: 'Hình chiếu đứng có hướng chiếu:', o: ['Từ trước tới', 'Từ trên xuống', 'Từ trái sang', 'Từ dưới lên'], a: 0 },
-    { part: 'Phần I · Câu 4', t: 'mcq', lv: 1, q: 'Hình chiếu bằng của hình trụ (đáy song song mặt phẳng chiếu bằng) là:', o: ['Hình tròn', 'Hình chữ nhật', 'Tam giác', 'Hình vuông'], a: 0 },
-    { part: 'Phần I · Câu 5', t: 'mcq', lv: 2, q: 'Nội dung nào KHÔNG có trong bản vẽ chi tiết?', o: ['Bảng kê', 'Khung tên', 'Yêu cầu kĩ thuật', 'Kích thước'], a: 0 },
-    { part: 'Phần I · Câu 6', t: 'mcq', lv: 2, q: 'Trình tự đọc bản vẽ lắp bắt đầu bằng:', o: ['Khung tên, rồi bảng kê', 'Kích thước', 'Phân tích chi tiết', 'Tổng hợp'], a: 0 },
-    { part: 'Phần I · Câu 7', t: 'mcq', lv: 2, q: 'Hình biểu diễn quan trọng nhất trong bản vẽ nhà là:', o: ['Mặt bằng', 'Mặt đứng', 'Mặt cắt', 'Hình chiếu cạnh'], a: 0 },
-    { part: 'Phần I · Câu 8', t: 'mcq', lv: 2, img: 'cua2', q: 'Kí hiệu trên trong bản vẽ nhà là:', o: ['Cửa đi đơn hai cánh', 'Cửa sổ kép', 'Cửa đi đơn một cánh', 'Cầu thang'], a: 0 },
-    { part: 'Phần II · Câu 1', t: 'tf4', lv: 2, q: 'Về tiêu chuẩn bản vẽ kĩ thuật:', items: [['Khổ A4 có kích thước 297 × 210 mm.', true], ['Đường tâm vẽ bằng nét đứt mảnh.', false], ['Kích thước ghi trên bản vẽ là kích thước thật, đơn vị mm.', true], ['Kí hiệu R ghi trước kích thước đường kính.', false]] },
-    { part: 'Phần II · Câu 2', t: 'tf4', lv: 2, q: 'Về hình chiếu vuông góc và bản vẽ:', items: [['Hình chiếu cạnh đặt bên phải hình chiếu đứng.', true], ['Hình nón có hình chiếu đứng là tam giác cân.', true], ['Bản vẽ lắp dùng để chế tạo từng chi tiết.', false], ['Mặt cắt của bản vẽ nhà cho biết kích thước theo chiều cao.', true]] },
-    { part: 'Phần III · Câu 1', t: 'short', lv: 2, q: 'Một đoạn thẳng dài 60 mm vẽ theo tỉ lệ 1:2 thì dài bao nhiêu mm trên bản vẽ?', a: ['30', '30 mm', '30mm'] },
-    { part: 'Phần III · Câu 2', t: 'short', lv: 3, q: 'Vật thể có hình chiếu đứng và cạnh là tam giác cân, hình chiếu bằng là hình tròn. Đó là khối gì?', a: ['hình nón', 'nón', 'khối nón'] },
-    { part: 'Phần IV · Tự luận', t: 'essay', lv: 3, pt: 2, q: 'Nêu nội dung của bản vẽ chi tiết và trình tự đọc bản vẽ chi tiết. Theo em, vì sao phải đọc khung tên đầu tiên?', kw: [['hinh bieu dien'], ['kich thuoc'], ['yeu cau ki thuat'], ['khung ten'], ['ten goi', 'vat lieu', 'ti le', 'biet']], kwn: ['Hình biểu diễn', 'Kích thước', 'Yêu cầu kĩ thuật', 'Khung tên', 'Lí do đọc khung tên trước'], model: 'Bản vẽ chi tiết gồm: hình biểu diễn, kích thước, yêu cầu kĩ thuật, khung tên. Trình tự đọc: khung tên → hình biểu diễn → kích thước → yêu cầu kĩ thuật. Đọc khung tên trước để biết tên gọi chi tiết, vật liệu, tỉ lệ bản vẽ, từ đó hiểu đúng các phần sau.' }
+    { part: 'Phần I · Câu 1', t: 'mcq', lv: 1, pt: 0.5, q: 'Nét liền đậm dùng để vẽ:', o: ['Đường bao thấy, cạnh thấy', 'Đường tâm', 'Đường kích thước', 'Cạnh khuất'], a: 0 },
+    { part: 'Phần I · Câu 2', t: 'mcq', lv: 1, pt: 0.5, q: 'Tỉ lệ 1:5 là tỉ lệ:', o: ['Thu nhỏ', 'Phóng to', 'Nguyên hình', 'Không xác định'], a: 0 },
+    { part: 'Phần I · Câu 3', t: 'mcq', lv: 1, pt: 0.5, q: 'Hình chiếu đứng có hướng chiếu:', o: ['Từ trước tới', 'Từ trên xuống', 'Từ trái sang', 'Từ dưới lên'], a: 0 },
+    { part: 'Phần I · Câu 4', t: 'mcq', lv: 1, pt: 0.5, q: 'Hình chiếu bằng của hình trụ (đáy song song mặt phẳng chiếu bằng) là:', o: ['Hình tròn', 'Hình chữ nhật', 'Tam giác', 'Hình vuông'], a: 0 },
+    { part: 'Phần I · Câu 5', t: 'mcq', lv: 2, pt: 0.5, q: 'Nội dung nào KHÔNG có trong bản vẽ chi tiết?', o: ['Bảng kê', 'Khung tên', 'Yêu cầu kĩ thuật', 'Kích thước'], a: 0 },
+    { part: 'Phần I · Câu 6', t: 'mcq', lv: 2, pt: 0.5, q: 'Trình tự đọc bản vẽ lắp bắt đầu bằng:', o: ['Khung tên, rồi bảng kê', 'Kích thước', 'Phân tích chi tiết', 'Tổng hợp'], a: 0 },
+    { part: 'Phần I · Câu 7', t: 'mcq', lv: 1, pt: 0.5, q: 'Hình biểu diễn quan trọng nhất trong bản vẽ nhà là:', o: ['Mặt bằng', 'Mặt đứng', 'Mặt cắt', 'Hình chiếu cạnh'], a: 0 },
+    { part: 'Phần I · Câu 8', t: 'mcq', lv: 1, pt: 0.5, img: 'cua2', q: 'Kí hiệu trên trong bản vẽ nhà là:', o: ['Cửa đi đơn hai cánh', 'Cửa sổ kép', 'Cửa đi đơn một cánh', 'Cầu thang'], a: 0 },
+    { part: 'Phần II · Câu 1', t: 'tf4', lv: 1, pt: 1, q: 'Về tiêu chuẩn bản vẽ kĩ thuật:', items: [['Khổ A4 có kích thước 297 × 210 mm.', true], ['Đường tâm vẽ bằng nét đứt mảnh.', false], ['Kích thước ghi trên bản vẽ là kích thước thật, đơn vị mm.', true], ['Kí hiệu R ghi trước kích thước đường kính.', false]] },
+    { part: 'Phần II · Câu 2', t: 'tf4', lv: 2, pt: 1, q: 'Về hình chiếu vuông góc và bản vẽ:', items: [['Hình chiếu cạnh đặt bên phải hình chiếu đứng.', true], ['Hình nón có hình chiếu đứng là tam giác cân.', true], ['Bản vẽ lắp dùng để chế tạo từng chi tiết.', false], ['Mặt cắt của bản vẽ nhà cho biết kích thước theo chiều cao.', true]] },
+    { part: 'Phần III · Câu 1', t: 'short', lv: 2, pt: 0.5, q: 'Một đoạn thẳng dài 60 mm vẽ theo tỉ lệ 1:2 thì dài bao nhiêu mm trên bản vẽ?', a: ['30', '30 mm', '30mm'] },
+    { part: 'Phần III · Câu 2', t: 'short', lv: 2, pt: 0.5, q: 'Vật thể có hình chiếu đứng và cạnh là tam giác cân, hình chiếu bằng là hình tròn. Đó là khối gì?', a: ['hình nón', 'nón', 'khối nón'] },
+    { part: 'Phần IV · Tự luận', t: 'essay', lv: 3, pt: 3, q: 'Nêu nội dung của bản vẽ chi tiết và trình tự đọc bản vẽ chi tiết. Theo em, vì sao phải đọc khung tên đầu tiên?', kw: [['hinh bieu dien'], ['kich thuoc'], ['yeu cau ki thuat'], ['khung ten'], ['ten goi', 'vat lieu', 'ti le', 'biet']], kwn: ['Hình biểu diễn', 'Kích thước', 'Yêu cầu kĩ thuật', 'Khung tên', 'Lí do đọc khung tên trước'], model: 'Bản vẽ chi tiết gồm: hình biểu diễn, kích thước, yêu cầu kĩ thuật, khung tên. Trình tự đọc: khung tên → hình biểu diễn → kích thước → yêu cầu kĩ thuật. Đọc khung tên trước để biết tên gọi chi tiết, vật liệu, tỉ lệ bản vẽ, từ đó hiểu đúng các phần sau.' }
   ],
   tasks: ['Tự làm lại đề trong 45 phút, không xem đáp án.', 'Vẽ 3 hình chiếu của một vật thể đơn giản trong nhà.', 'Ghi lại 3 lỗi em hay sai và cách khắc phục.'] }
 ];

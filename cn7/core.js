@@ -4,8 +4,8 @@
 (function () {
 'use strict';
 const A = APP, ID = A.id, TH = A.school !== 'thcs';
-const LV = TH ? ['', 'Mức 1 · Biết', 'Mức 2 · Hiểu', 'Mức 3 · Vận dụng'] : ['', 'Nhận biết', 'Thông hiểu', 'Vận dụng'];
-const LVs = TH ? ['', 'Mức 1', 'Mức 2', 'Mức 3'] : ['', 'Nhận biết', 'Thông hiểu', 'Vận dụng'];
+const LV = TH ? ['', 'Mức 1 · Nhận biết', 'Mức 2 · Kết nối', 'Mức 3 · Vận dụng'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
+const LVs = TH ? ['', 'Mức 1', 'Mức 2', 'Mức 3'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
 const TYPE = { mcq: 'Trắc nghiệm', tf: 'Đúng hay sai', tf4: 'Đúng/Sai từng ý', short: 'Trả lời ngắn', match: 'Nối', sort: 'Phân loại', order: 'Sắp xếp thứ tự', essay: 'Tự luận', pick: 'Chọn hình' };
 const STEP = ['Nhắc lại kiến thức', 'Sơ đồ tư duy', 'Câu hỏi ôn tập', 'Vận dụng'];
 const STEP_EN = ['Remember', 'Mind map', 'Review questions', 'Apply'];
@@ -20,7 +20,7 @@ const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').repla
 const shuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const isEmoji = c => c && /[^\x00-\x7F]/.test(c[0] + (c[1] || ''));
 const emojiURL = (e, bg) => 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="18" fill="${bg || '#FFF6DA'}"/><text x="50" y="54" font-size="62" text-anchor="middle" dominant-baseline="middle">${e}</text></svg>`);
-const src = c => !c ? '' : isEmoji(c) ? emojiURL(c) : /^(data:|https?:|img\/)/.test(c) ? c : 'img/' + c + '.jpg';
+const src = c => !c ? '' : (typeof SVGS !== 'undefined' && SVGS[c]) ? 'data:image/svg+xml,' + encodeURIComponent(SVGS[c]) : isEmoji(c) ? emojiURL(c) : /^(data:|https?:|img\/)/.test(c) ? c : 'img/' + c + '.jpg';
 const img = (c, alt, cls) => c ? `<img src="${src(c)}" alt="${esc(alt || '')}"${cls ? ` class="${cls}"` : ''} loading="lazy">` : '';
 const pose = k => (A.poses && A.poses[k]) || A.mascot;
 const S = n => STAGES.find(s => s.n === n);
@@ -352,7 +352,7 @@ function stepQuiz(st) {
     'Trả lời các câu hỏi ôn tập. Câu hỏi đi từ <b>' + LVs[1] + '</b> đến <b>' + LVs[3] + '</b>. Đọc kĩ rồi mới chọn nhé!', 'Answer the review questions.');
   h += `<div class="qtop"><span class="pill">Câu ${QZ.i + 1}/${tot}</span><div class="prog"><i style="width:${QZ.i / tot * 100}%"></i></div>${st.exam ? '<span class="pill" data-clock>⏱ 00:00</span>' : ''}<span class="pill">✅ ${QZ.sc.reduce((a, b) => a + b, 0).toFixed(1).replace('.0', '')}</span></div>
   <section class="qbox pop" data-q>
-    <div class="qmeta">${q.part ? `<span class="qtype" style="background:var(--sun-soft);color:var(--ink)">${esc(q.part)}</span>` : ''}<span class="lv lv${q.lv || 1}">${LV[q.lv || 1]}</span><span class="qtype">${TYPE[q.t] || ''}</span>${q.pt ? `<span class="qtype">${q.pt} điểm</span>` : ''}</div>
+    <div class="qmeta">${q.part ? `<span class="qtype" style="background:var(--sun-soft);color:var(--ink)">${esc(q.part)}</span>` : ''}<span class="lv lv${q.lv || 1}">${LV[q.lv || 1]}</span><span class="qtype">${TYPE[q.t] || ''}</span>${q.pt ? `<span class="qtype">${String(q.pt).replace(".", ",")} điểm</span>` : ''}</div>
     <div class="qq"><h3>${q.ctx ? `<span class="ctx">${rich(q.ctx)}</span>` : ''}${rich(q.q)}${BI && q.qe ? `<span class="en" lang="en">${esc(q.qe)}</span>` : ''}</h3><button class="say" data-sayq>🔊</button></div>
     ${q.img ? img(q.img, '', 'qimg') : ''}
     <div data-ans></div>

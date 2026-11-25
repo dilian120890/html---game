@@ -11,7 +11,7 @@ const APP = {
 const TOPICS = [
   { name: 'Hoa và cây cảnh quanh em', en: 'Flowers and ornamental plants', color: '#E0533D', soft: '#FFE6DF' },
   { name: 'Trồng hoa, cây cảnh trong chậu', en: 'Growing plants in pots', color: '#3AA85A', soft: '#DFF3E3' },
-  { name: 'Ôn tập giữa học kì 1', en: 'Mid-term review', color: '#E08A1E', soft: '#FFF0D6' }
+  { name: 'Ôn tập cuối học kì 1', en: 'End-of-term review', color: '#E08A1E', soft: '#FFF0D6' }
 ];
 const STAGES = [
 /* ───── 1 ───── */
@@ -202,10 +202,10 @@ const STAGES = [
   ],
   tasks: ['Lập bảng theo dõi: mỗi ngày ghi đã tưới nước, nhổ cỏ, bắt sâu cho cây chưa.', 'Làm “bác sĩ cây”: kiểm tra một chậu cây ở nhà và nói cây đang khoẻ hay cần giúp gì.', 'Hướng dẫn em nhỏ hoặc bạn bè cách tưới cây đúng cách.'] },
 /* ───── 7 ★ ───── */
-{ n: 7, t: 2, star: true, exam: true, title: 'Đề ôn giữa học kì 1', en: 'Mid-term practice test', cover: '01_2_8', sticker: '00_3_6',
-  examTitle: 'Đề ôn kiểm tra giữa học kì 1 – Công nghệ 4', examNote: 'Phần I: 8 câu trắc nghiệm. Phần II: Đúng/Sai, sắp xếp, tình huống và thiết kế góc học tập xanh.',
+{ n: 7, t: 2, star: true, exam: true, title: 'Đề ôn cuối học kì 1', en: 'End-of-term practice test', cover: '01_2_8', sticker: '00_3_6',
+  examTitle: 'Đề ôn kiểm tra cuối học kì 1 – Công nghệ 4', examNote: 'Phần I: 8 câu trắc nghiệm. Phần II: Đúng/Sai, sắp xếp, tình huống và thiết kế góc học tập xanh. Câu hỏi theo 3 mức: Nhận biết, Kết nối, Vận dụng.',
   recall: [
-    { img: '🍃', fit: true, t: 'Làm **tiêu bản lá tươi**: kẹp lá giữa các tờ **giấy báo khô**, đè **vật nặng** (sách dày) lên vài ngày để lá khô, phẳng mà vẫn giữ màu.', te: 'Press fresh leaves between dry newspaper under a heavy book.' },
+    { img: '🌱', fit: true, t: '**Gieo hạt** trong chậu: cho đất vào chậu, **gieo hạt** đều, phủ một lớp **đất mỏng**, rồi **tưới nhẹ** cho đất ẩm.', te: 'Sow seeds, cover with a thin layer of soil, water gently.' },
     { img: '03_1_8', fit: true, t: 'Viên **đất nung (Leca)** nhẹ, **xốp**, lót đáy chậu giúp **thoát nước**, rễ cây **thoáng khí**.', te: 'Light clay balls help water drain and roots breathe.' },
     { img: '♻️', fit: true, t: '**Chậu tái chế** từ chai nhựa: nhờ người lớn **đục lỗ** hoặc khoét **rãnh chữ V** ở đáy cho nước thoát.', te: 'Recycled bottle pots need holes at the bottom.' },
     { img: '01_2_8', t: 'Cây xanh ở **góc học tập** giúp **lọc không khí**, mát mắt, giúp em **thư giãn** khi học.', te: 'Plants on your desk clean the air and relax your eyes.' },
@@ -213,7 +213,7 @@ const STAGES = [
     { img: '🍽️', fit: true, more: ['03_1_11'], t: 'Đặt **đĩa lót** dưới chậu để hứng nước, giữ bàn khô ráo; tưới lá nhẹ bằng **bình phun sương**.', te: 'Use a saucer under the pot and a spray bottle.' }
   ],
   keys: ['Ôn lại cả 6 chặng: lợi ích, các loại hoa cây cảnh, vật liệu dụng cụ, gieo hạt, trồng cây con, chăm sóc.', 'Dạng đề: trắc nghiệm A, B, C, D; Đúng/Sai; sắp xếp; tình huống; thiết kế góc học tập xanh.'],
-  w: [['🍃', 'tiêu bản lá', 'pressed leaf'], ['03_1_8', 'viên đất nung', 'clay balls'], ['♻️', 'tái chế', 'recycle'], ['01_2_8', 'góc học tập', 'study corner'], ['🍽️', 'đĩa lót', 'saucer']],
+  w: [['🌱', 'gieo hạt', 'sow seeds'], ['03_1_8', 'viên đất nung', 'clay balls'], ['♻️', 'tái chế', 'recycle'], ['01_2_8', 'góc học tập', 'study corner'], ['🍽️', 'đĩa lót', 'saucer']],
   mind: { center: 'Góc học tập xanh của em', ce: 'My green study corner', img: '01_2_8', extra: ['tủ tối', 'cây thật to'], branches: [
     { label: 'Chọn cây', le: 'Plant', color: '#3AA85A', img: '02_1_9', items: ['Cây nhỏ, {{dễ sống}}, ít tưới', 'Ví dụ: sen đá, {{lưỡi hổ}}, nha đam'] },
     { label: 'Chọn chậu', le: 'Pot', color: '#E08A1E', img: '03_1_1', items: ['Chậu {{đất nung}} hoặc chậu tái chế', 'Đáy chậu có {{lỗ}} thoát nước', 'Lót đáy bằng viên {{Leca}}'] },
@@ -221,18 +221,18 @@ const STAGES = [
     { label: 'Lợi ích', le: 'Benefits', color: '#E0533D', img: '01_2_8', items: ['{{Lọc}} không khí', 'Giúp mắt {{thư giãn}}'] }
   ] },
   q: [
-    { part: 'Phần I · Câu 1', t: 'mcq', lv: 1, pt: 1, q: 'Khi làm tiêu bản lá tươi, em làm thế nào để lá khô mà vẫn phẳng?', o: ['Kẹp lá giữa các tờ giấy báo khô rồi đè vật nặng lên', 'Ngâm lá vào chậu nước', 'Phơi lá ngoài nắng gắt', 'Cất lá vào túi ni-lông kín'], a: 0, ex: 'Giấy báo khô hút ẩm, vật nặng giữ lá phẳng.' },
+    { part: 'Phần I · Câu 1', t: 'mcq', lv: 1, pt: 1, q: 'Sau khi gieo hạt vào chậu, em cần làm gì tiếp theo?', o: ['Phủ một lớp đất mỏng lên hạt rồi tưới nhẹ', 'Đổ thật nhiều nước cho ngập chậu', 'Đè chặt đất bằng vật nặng', 'Để chậu khô, không tưới'], a: 0, ex: 'Lớp đất mỏng giữ ẩm cho hạt, tưới nhẹ để hạt không bị trôi.' },
     { part: 'Phần I · Câu 2', t: 'mcq', lv: 1, pt: 1, q: 'Viên đất nung (Leca) lót ở đáy chậu có tác dụng gì?', o: ['Giúp thoát nước, rễ cây thoáng khí', 'Làm chậu nặng hơn', 'Thay cho phân bón', 'Giữ nước làm đất luôn ngập'], a: 0 },
-    { part: 'Phần I · Câu 3', t: 'mcq', lv: 2, pt: 1, q: 'Khi dùng chai nhựa làm chậu tái chế, cần làm gì ở đáy chai?', o: ['Đục lỗ hoặc khoét rãnh để nước thoát ra', 'Dán kín đáy bằng băng dính', 'Đổ đầy cát cho nặng', 'Không cần làm gì'], a: 0 },
+    { part: 'Phần I · Câu 3', t: 'mcq', lv: 1, pt: 1, q: 'Khi dùng chai nhựa làm chậu tái chế, cần làm gì ở đáy chai?', o: ['Đục lỗ hoặc khoét rãnh để nước thoát ra', 'Dán kín đáy bằng băng dính', 'Đổ đầy cát cho nặng', 'Không cần làm gì'], a: 0 },
     { part: 'Phần I · Câu 4', t: 'mcq', lv: 1, pt: 1, q: 'Đặt cây xanh ở góc học tập mang lại lợi ích gì?', o: ['Lọc không khí, giúp mắt thư giãn', 'Làm phòng tối hơn', 'Làm bàn học chật chội', 'Thu hút muỗi'], a: 0 },
     { part: 'Phần I · Câu 5', t: 'mcq', lv: 1, pt: 1, q: 'Loài cây nào hợp đặt trên bàn học vì nhỏ, dễ sống, ít phải tưới?', o: ['Sen đá', 'Cây phượng', 'Cây đào to', 'Cây hoa sen'], a: 0 },
     { part: 'Phần I · Câu 6', t: 'mcq', lv: 2, pt: 1, q: 'Vì sao nên đặt chậu cây ở góc học tập gần cửa sổ?', o: ['Vì cây cần ánh sáng để sống khoẻ', 'Để cây dễ bị rơi', 'Để che hết ánh sáng', 'Để cây không cần tưới'], a: 0 },
     { part: 'Phần I · Câu 7', t: 'mcq', lv: 2, pt: 1, q: 'Dụng cụ nào giúp tưới nhẹ, đều lên lá cây nhỏ trên bàn học?', o: ['Bình phun sương', 'Xô nước', 'Vòi nước lớn', 'Xẻng nhỏ'], a: 0 },
     { part: 'Phần I · Câu 8', t: 'mcq', lv: 2, pt: 1, q: 'Đặt đĩa lót dưới chậu cây trên bàn học để làm gì?', o: ['Hứng nước thừa, giữ bàn học khô ráo', 'Để chậu cao hơn', 'Chỉ để trang trí', 'Để cây không cần tưới'], a: 0 },
     { part: 'Phần II · Câu 9', t: 'tf4', lv: 2, q: 'Bin chuẩn bị trồng cây cho góc học tập. Mỗi ý sau đúng hay sai?', items: [['Chọn cây lưỡi hổ vì dễ sống, lọc không khí.', true], ['Dùng chậu kín đáy để nước không chảy ra bàn.', false], ['Đặt chậu trong góc tủ tối cho cây khỏi héo.', false], ['Lót đáy chậu bằng viên đất nung Leca.', true]] },
-    { part: 'Phần II · Câu 10', t: 'order', lv: 2, q: 'Sắp xếp các bước làm tiêu bản lá tươi.', items: ['Chọn lá tươi, lành lặn, lau sạch', 'Đặt lá giữa các tờ giấy báo khô', 'Đè vật nặng (sách dày) lên trên', 'Để vài ngày, lá khô phẳng thì dán vào giấy, ghi tên lá'] },
+    { part: 'Phần II · Câu 10', t: 'order', lv: 2, q: 'Sắp xếp các bước trồng cây con trong chậu.', items: ['Rải sỏi ở đáy chậu', 'Cho đất vào khoảng một nửa chậu', 'Đặt cây con vào giữa chậu', 'Lấp đất, ấn nhẹ quanh gốc', 'Tưới nhẹ nước cho đất ẩm'] },
     { part: 'Phần II · Câu 11', t: 'mcq', lv: 3, ctx: 'Chậu cây trên bàn học của Lan bị vàng lá, đất lúc nào cũng sũng nước, đáy chậu không có lỗ.', q: 'Cách khắc phục đúng nhất là gì?', o: ['Đổi sang chậu có lỗ thoát nước, lót viên Leca, tưới ít lại', 'Tưới thêm nhiều nước', 'Đặt chậu vào tủ tối', 'Bón thật nhiều phân'], a: 0 },
     { part: 'Phần II · Câu 12', t: 'essay', lv: 3, pt: 2, q: 'Em hãy thiết kế góc học tập xanh: chọn cây gì, chậu gì, đặt ở đâu, chăm sóc thế nào? Giải thích ngắn gọn.', kw: [['sen da', 'luoi ho', 'nha dam', 'xuong rong', 'trau ba', 'kim tien'], ['dat nung', 'tai che', 'chau'], ['cua so', 'anh sang'], ['dia lot', 'phun suong', 'tuoi']], kwn: ['Chọn cây phù hợp', 'Chọn chậu', 'Vị trí có ánh sáng', 'Cách chăm sóc'], model: 'Em chọn cây lưỡi hổ vì cây nhỏ, dễ sống, lọc không khí. Em trồng trong chậu đất nung có lỗ thoát nước, lót viên Leca ở đáy. Em đặt chậu gần cửa sổ để cây có ánh sáng, dưới chậu có đĩa lót hứng nước. Mỗi tuần em phun sương và tưới ít nước khi đất khô.' }
   ],
-  tasks: ['Làm một tiêu bản lá tươi: kẹp lá vào giấy báo, đè sách dày lên, sau 5–7 ngày dán vào vở.', 'Vẽ sơ đồ góc học tập xanh của em: bàn học, cửa sổ, chậu cây.', 'Làm một chậu cây tái chế từ chai nhựa (nhờ người lớn đục lỗ).'] }
+  tasks: ['Gieo vài hạt đậu vào chậu nhỏ, tưới nhẹ mỗi ngày và ghi lại ngày hạt nảy mầm.', 'Vẽ sơ đồ góc học tập xanh của em: bàn học, cửa sổ, chậu cây.', 'Làm một chậu cây tái chế từ chai nhựa (nhờ người lớn đục lỗ).'] }
 ];

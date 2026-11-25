@@ -4,8 +4,8 @@
 (function () {
 'use strict';
 const A = APP, ID = A.id, TH = A.school !== 'thcs';
-const LV = TH ? ['', 'Mức 1 · Biết', 'Mức 2 · Hiểu', 'Mức 3 · Vận dụng'] : ['', 'Nhận biết', 'Thông hiểu', 'Vận dụng'];
-const LVs = TH ? ['', 'Mức 1', 'Mức 2', 'Mức 3'] : ['', 'Nhận biết', 'Thông hiểu', 'Vận dụng'];
+const LV = TH ? ['', 'Mức 1 · Nhận biết', 'Mức 2 · Kết nối', 'Mức 3 · Vận dụng'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
+const LVs = TH ? ['', 'Mức 1', 'Mức 2', 'Mức 3'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
 const TYPE = { mcq: 'Trắc nghiệm', tf: 'Đúng hay sai', tf4: 'Đúng/Sai từng ý', short: 'Trả lời ngắn', match: 'Nối', sort: 'Phân loại', order: 'Sắp xếp thứ tự', essay: 'Tự luận', pick: 'Chọn hình' };
 const STEP = ['Nhắc lại kiến thức', 'Sơ đồ tư duy', 'Câu hỏi ôn tập', 'Vận dụng'];
 const STEP_EN = ['Remember', 'Mind map', 'Review questions', 'Apply'];
@@ -352,7 +352,7 @@ function stepQuiz(st) {
     'Trả lời các câu hỏi ôn tập. Câu hỏi đi từ <b>' + LVs[1] + '</b> đến <b>' + LVs[3] + '</b>. Đọc kĩ rồi mới chọn nhé!', 'Answer the review questions.');
   h += `<div class="qtop"><span class="pill">Câu ${QZ.i + 1}/${tot}</span><div class="prog"><i style="width:${QZ.i / tot * 100}%"></i></div>${st.exam ? '<span class="pill" data-clock>⏱ 00:00</span>' : ''}<span class="pill">✅ ${QZ.sc.reduce((a, b) => a + b, 0).toFixed(1).replace('.0', '')}</span></div>
   <section class="qbox pop" data-q>
-    <div class="qmeta">${q.part ? `<span class="qtype" style="background:var(--sun-soft);color:var(--ink)">${esc(q.part)}</span>` : ''}<span class="lv lv${q.lv || 1}">${LV[q.lv || 1]}</span><span class="qtype">${TYPE[q.t] || ''}</span>${q.pt ? `<span class="qtype">${q.pt} điểm</span>` : ''}</div>
+    <div class="qmeta">${q.part ? `<span class="qtype" style="background:var(--sun-soft);color:var(--ink)">${esc(q.part)}</span>` : ''}<span class="lv lv${q.lv || 1}">${LV[q.lv || 1]}</span><span class="qtype">${TYPE[q.t] || ''}</span>${q.pt ? `<span class="qtype">${String(q.pt).replace(".", ",")} điểm</span>` : ''}</div>
     <div class="qq"><h3>${q.ctx ? `<span class="ctx">${rich(q.ctx)}</span>` : ''}${rich(q.q)}${BI && q.qe ? `<span class="en" lang="en">${esc(q.qe)}</span>` : ''}</h3><button class="say" data-sayq>🔊</button></div>
     ${q.img ? img(q.img, '', 'qimg') : ''}
     <div data-ans></div>
