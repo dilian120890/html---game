@@ -99,6 +99,39 @@ function sheetPush(id) {
 }
 setTimeout(sheetPull, 0);
 
+/* ── Bài cô giao (từ Sổ đánh giá năng lực của cô, trang tính gb-<app>) ── */
+let ASGS = ls.get('gb', {}), lastGb = 0;
+function gbPull() {
+  if (!SHEET || Date.now() - lastGb < 15000) return;
+  lastGb = Date.now();
+  fetch(SHEET + '?app=gb-' + ID + '&t=' + Date.now()).then(r => r.json()).then(j => {
+    const m = {}; (j.rows || []).forEach(r => { if (r && r.id && r.p) m[r.id] = r.p; });
+    ASGS = m; ls.set('gb', m); redrawIfList();
+  }).catch(() => {});
+}
+function myAsgs() {
+  if (!SID) return [];
+  return Object.entries(ASGS).map(([k, p]) => [k, p.v, p['fb:' + SID]])
+    .filter(([, v]) => v && !v.del && v.cls === CLASS_NAME && (v.target === 'all' || (v.ids || []).includes(SID)))
+    .sort((a, b) => (b[1].created || 0) - (a[1].created || 0));
+}
+const asgStages = () => { const o = {}; myAsgs().forEach(([, v]) => (v.stages || []).forEach(n => { if (!(PROG[n] && PROG[n].done)) o[n] = v.due || ''; })); return o; };
+function asgBox() {
+  const l = myAsgs(); if (!l.length) return '';
+  const vnd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+  const td = new Date(); const today = new Date(td - td.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  return `<section class="topic" style="--tc:#E8590C;--tcs:#FFF1E6"><div><h2>📌 Cô giao${BI ? '<span class="en">Assigned by your teacher</span>' : ''}</h2></div><div>${l.map(([k, v, fb]) => {
+    const st = (v.stages || []).map(n => STAGES.find(s => s.n === +n)).filter(Boolean);
+    const done = st.filter(s => PROG[s.n] && PROG[s.n].done).length, all = done === st.length;
+    const late = v.due && today > v.due && !all;
+    return `<div style="background:#fff;border-radius:14px;padding:12px 14px;margin:8px 0;border:2px solid ${all ? '#3AA85A' : late ? '#E5484D' : '#F3C9A8'}">
+      <b>${esc(v.title)}</b> ${all ? '✅' : ''}<div style="font-size:14px;margin:4px 0">${v.due ? (late ? '⏰ Đã quá hạn ' : '🗓 Hạn nộp ') + vnd(v.due) + ' · ' : ''}Đã xong ${done}/${st.length} chặng</div>
+      ${v.note ? `<div style="font-size:14px">💬 Lời dặn của cô: ${esc(v.note)}</div>` : ''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${st.map(s => `<button class="btn ${PROG[s.n] && PROG[s.n].done ? 'ghost' : ''} sm" data-st="${s.n}">${PROG[s.n] && PROG[s.n].done ? '★'.repeat(PROG[s.n].stars || 0) + ' ' : ''}Chặng ${s.n}</button>`).join('')}</div>
+      ${fb && fb.ok && fb.t ? `<div style="margin-top:8px;background:#FFF8E1;border-radius:10px;padding:8px 10px;font-size:14px">👩‍🏫 Nhận xét của cô: ${esc(fb.t)}</div>` : ''}</div>`;
+  }).join('')}</div></section>`;
+}
+
 /* ── đọc to & song ngữ ── */
 let BI = A.bilingual ? ls.get('bi', true) : false;
 /* Song ngữ câu hỏi – đáp án: EN_DICT (file en.js) dịch các chuỗi tiếng Việt; APP.enRatio = tỉ lệ câu có tiếng Anh trong mỗi chặng. */
@@ -157,13 +190,14 @@ const stepsDone = n => { const p = PROG[n] || {}; return [!!p.s1, !!p.s2, !!p.s3
 /* ───────── TRANG CHỦ ───────── */
 function home() {
   if (!SID) return who();
-  REDRAW = home; sheetPull();
+  REDRAW = home; sheetPull(); gbPull();
   const all = STAGES.every(s => PROG[s.n] && PROG[s.n].done);
   let h = bar(false) + `
   <div class="hero">${img(all && A.finale ? A.finale : A.hero, A.name)}
     <div class="ttl"><h1>${esc(A.name)}</h1><span class="sub">${esc(A.sub)}${BI && A.nameEn ? ' · ' + esc(A.nameEn) : ''}</span></div></div>
   <div class="guide">${img(pose('hi'), '')}<div class="bubble">${A.intro}${BI && A.introEn ? `<span class="en" lang="en">${esc(A.introEn)}</span>` : ''}</div></div>
   <div class="howto">${STEP.map((s, i) => `<div><b>${i + 1}</b>${s}${BI ? `<span class="en">${STEP_EN[i]}</span>` : ''}</div>`).join('')}</div>`;
+  h += asgBox();
   TOPICS.forEach((t, ti) => {
     const list = STAGES.filter(s => (s.t || 0) === ti);
     if (!list.length) return;
@@ -180,7 +214,7 @@ function home() {
 function card(st) {
   const p = PROG[st.n] || {}, d = stepsDone(st.n);
   return `<button class="card${st.star ? ' star' : ''}" data-st="${st.n}">
-    ${img(st.cover, st.title)}${p.stars ? `<span class="st">${'★'.repeat(p.stars)}</span>` : ''}
+    ${img(st.cover, st.title)}${p.stars ? `<span class="st">${'★'.repeat(p.stars)}</span>` : ''}${st.n in asgStages() ? `<span class="st" style="left:6px;right:auto;background:#E8590C;color:#fff;font-size:12px">📌 Cô giao</span>` : ''}
     <span class="cb"><span class="no">${st.star ? '★ Ôn tập tổng hợp' : 'Chặng ' + st.n}</span><span class="nm">${esc(st.title)}${ENp(st.title, st.en)}</span>
     <span class="steps4">${d.map(x => `<i class="${x ? 'on' : ''}"></i>`).join('')}</span></span></button>`;
 }

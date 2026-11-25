@@ -29,7 +29,8 @@ let TAB = LS.get('tab', 'obs');
 let SID = null, SESSION = null, GFILTER = 'all';
 const DATA = LS.get('data', {});      /* sheetApp → { hsId: p } */
 const REV = LS.get('rev', {});        /* app ôn tập → { hsId: p } */
-const CFG = LS.get('cfg', {});        /* tiêu chí cô sửa + khoá năm học */
+const CFG = LS.get('cfg', {});
+const GB = LS.get('gb', {});         /* bài cô giao: app ôn tập → { mã bài: p } */        /* tiêu chí cô sửa + khoá năm học */
 let SYNC = SHEET ? 'wait' : 'local';
 
 const school = () => +CLS[0] >= 6 ? 'thcs' : 'th';
@@ -75,13 +76,17 @@ function pull(force) {
     const m = REV[appId()] = REV[appId()] || {};
     (j.rows || []).forEach(r => { if (r && r.id) m[r.id] = mergeP(m[r.id], r.p); });
   }));
+  if (appId()) jobs.push(sheetGet('gb-' + appId()).then(j => {
+    const m = GB[appId()] = GB[appId()] || {};
+    (j.rows || []).forEach(r => { if (r && r.id) m[r.id] = mergeP(m[r.id], r.p); });
+  }));
   jobs.push(sheetGet('dg-cfg').then(j => {
     (j.rows || []).forEach(r => { if (r && r.id && r.p && r.p.v) { if (!CFG[r.id] || (r.p.v.at || 0) > (CFG[r.id].at || 0)) CFG[r.id] = r.p.v; } });
   }));
   Promise.all(jobs).then(() => { SYNC = 'sheet'; save(); render(); if (force) toast('Đã tải dữ liệu mới nhất từ Google Sheet'); })
     .catch(() => { SYNC = 'error'; drawSync(); render(); });
 }
-function save() { LS.set('data', DATA); LS.set('rev', REV); LS.set('cfg', CFG); }
+function save() { LS.set('data', DATA); LS.set('rev', REV); LS.set('cfg', CFG); LS.set('gb', GB); }
 function queue(id) {
   save();
   if (!SHEET) return;
@@ -130,6 +135,15 @@ function evidences(id, c, per) {
     out.push({ src: 'gv', lv: v.lv, date: s.date, label: 'Quan sát ' + vn(s.date) + ' · tiết ' + s.tiet + (s.bai ? ' · ' + s.bai : ''), w: 2, sess: m[2] });
   });
   const ai = appInfo(), rv = ai && REV[ai.id];
+  /* bài cô giao đã thẩm định: mức cô chốt thành minh chứng hệ số 2, và các chặng của bài đó không tính lại lần nữa */
+  const skip = new Set();
+  asgList().forEach(([aid, a]) => {
+    const fb = (GB[appId()][aid] || {})['fb:' + id];
+    if (!fb || !fb.ok || !fb.lv || !forKid(a, id)) return;
+    const d = dstr(fb.at); if (d < per.from || d > per.to) return;
+    (a.stages || []).forEach(n => skip.add(+n));
+    if ((a.codes || []).includes(c.code)) out.push({ src: 'gb', lv: fb.lv, date: d, label: 'Bài cô giao: ' + a.title + (fb.t ? ' · ' + fb.t : ''), w: 2 });
+  });
   if (c.app && ai && rv) {
     const rp = rv[id] || {};
     if (c.app === 'done') {
@@ -141,7 +155,7 @@ function evidences(id, c, per) {
       }
     } else {
       ai.stages.forEach(([sn, title]) => {
-        const st = rp[sn]; if (!st || !st.tries || !st.at) return;
+        const st = rp[sn]; if (!st || !st.tries || !st.at || skip.has(+sn)) return;
         if (c.app === 'review' && !isReview(title)) return;
         const d = dstr(st.at); if (d < per.from || d > per.to) return;
         out.push({ src: 'app', lv: starLv(st), date: d, label: 'App: ' + title + ' · ' + '★'.repeat(st.stars || 0) + (st.stars ? '' : '✗'), w: 1 });
@@ -204,7 +218,7 @@ function header() {
   $('#selCls').innerHTML = CLASSES.map(c => `<option ${c === CLS ? 'selected' : ''}>${c}</option>`).join('');
   $('#selSub').innerHTML = subjList().map(([s]) => `<option value="${s}" ${s === SUBJ ? 'selected' : ''}>${SUBJECTS[s].name}</option>`).join('');
   $('#selPer').innerHTML = GD().map(p => `<option value="${p.id}" ${p.id === PER ? 'selected' : ''}>${p.name}</option>`).join('');
-  const T = [['obs', 'Quan sát lớp học'], ['hs', 'Hồ sơ học sinh'], ['lop', 'Tổng hợp lớp'], ['tc', 'Bộ tiêu chí'], ['ql', 'Lớp & năm học'], ['hd', 'Hướng dẫn']];
+  const T = [['obs', 'Quan sát lớp học'], ['hs', 'Hồ sơ học sinh'], ['lop', 'Tổng hợp lớp'], ['tc', 'Bộ tiêu chí'], ['gb', 'Giao bài'], ['ql', 'Lớp & năm học'], ['hd', 'Hướng dẫn']];
   $('#tabs').innerHTML = T.map(([k, n]) => `<button data-tab="${k}" class="${k === TAB ? 'on' : ''}">${n}</button>`).join('');
   drawSync();
 }
@@ -215,7 +229,7 @@ $('#sync').onclick = () => pull(true);
 $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; TAB = b.dataset.tab; LS.set('tab', TAB); header(); render(); };
 
 function render() {
-  const v = { obs: viewObs, hs: viewStudent, lop: viewClass, tc: viewCriteria, ql: viewManage, hd: viewHelp }[TAB] || viewObs;
+  const v = { obs: viewObs, hs: viewStudent, lop: viewClass, tc: viewCriteria, ql: viewManage, gb: viewAssign, hd: viewHelp }[TAB] || viewObs;
   $('#app').innerHTML = v();
   drawSync();
 }
@@ -369,7 +383,7 @@ function viewStudent() {
    ${notes.length ? `<div class="card"><h3>Ghi chú quan sát của cô</h3>${notes.map(([d, t, b]) => `<div class="stage"><span>📝 ${esc(t)}</span><span class="mute">${vn(d)}${b ? ' · ' + esc(b) : ''}</span></div>`).join('')}</div>` : ''}
    <div class="card"><h2>Biểu hiện và minh chứng</h2><div class="tblw" style="max-height:none"><table><thead><tr><th>Mã</th><th>Biểu hiện</th><th>Minh chứng (mới nhất trước)</th><th>Tự tính</th><th>Xu hướng</th><th>Cô chốt</th></tr></thead><tbody>
    ${S.rows.map(({ c, a }) => `<tr><td><b>${esc(c.code)}</b><div class="mute">${GROUPS[c.g]}</div></td><td style="min-width:300px;font-size:13.5px">${esc(c.name)}<div class="mute">${esc(c.bloom || '')} · ${esc(c.measure || '')}</div></td>
-    <td><div class="ev">${a.ev.map(e => `<span class="${e.src}" title="${esc(e.label)}">${e.src === 'gv' ? '👁 ' + vn(e.date).slice(0, 5) : '📱 ' + esc(e.label.replace(/^App: /, '').slice(0, 34))} ${lvObj(e.lv).k}</span>`).join('') || '<span class="mute">—</span>'}</div>${a.gap ? '<div class="gap">Cần thêm minh chứng (tối thiểu 2)</div>' : ''}
+    <td><div class="ev">${a.ev.map(e => `<span class="${e.src}" title="${esc(e.label)}">${e.src === 'gv' ? '👁 ' + vn(e.date).slice(0, 5) : e.src === 'gb' ? '📌 ' + esc(e.label.replace(/^Bài cô giao: /, '').slice(0, 34)) : '📱 ' + esc(e.label.replace(/^App: /, '').slice(0, 34))} ${lvObj(e.lv).k}</span>`).join('') || '<span class="mute">—</span>'}</div>${a.gap ? '<div class="gap">Cần thêm minh chứng (tối thiểu 2)</div>' : ''}
 </td>
     <td>${lvChip(a.auto)}</td><td>${trendChip(a.trend)}${a.prev ? `<div class="mute" style="font-size:11px">gần nhất ${lvObj(a.last).k}, trước ${lvObj(a.prev).k}</div>` : ''}</td><td><select data-ov="${esc(c.code)}" ${ro ? 'disabled' : ''}><option value="0">Tự động</option>${SC().levels.map(l => `<option value="${l.v}" ${a.ov === l.v ? 'selected' : ''}>${l.k}</option>`).join('')}</select></td></tr>`).join('')}
    </tbody></table></div></div>
@@ -490,6 +504,7 @@ function viewHelp() {
    <li><b>Hồ sơ học sinh</b>: mức từng biểu hiện được tính từ mọi minh chứng trong giai đoạn (quan sát của cô tính hệ số 2, app tính hệ số 1). Biểu hiện có dưới 2 minh chứng được báo "cần thêm minh chứng". Cô luôn có quyền <b>chốt mức</b> thủ công.</li>
    <li><b>Nhận xét</b>: app tự ghép câu ghi nhận và câu gợi mở theo ma trận; cô sửa trực tiếp, app tự lưu. Ở tab Tổng hợp lớp cô sao chép nhận xét cả lớp hoặc tải bảng Excel.</li>
    <li><b>Bộ tiêu chí</b>: sửa mã, biểu hiện, ngưỡng và câu nhận xét cho khớp KHDH của trường.</li>
+   <li><b>Giao bài</b>: chọn chặng trên app ôn tập, giao cả lớp hoặc từng con, đặt hạn nộp và lời dặn. Học sinh thấy mục "📌 Cô giao" trong app. Cô theo dõi ai xong, ai chưa, ai quá hạn; chỉnh mức, nhận xét và thẩm định. Bài đã thẩm định thành minh chứng hệ số 2 và học sinh xem được nhận xét.</li>
    <li><b>Lớp & năm học</b>: thêm học sinh, sửa tên, đánh dấu học sinh nghỉ; sửa ngày các giai đoạn; cuối năm khoá năm học.</li>
    <li><b>Theo dõi tiến bộ</b>: hồ sơ học sinh có xu hướng từng biểu hiện (tăng, giảm, ổn định), lịch sử qua các giai đoạn và đề xuất việc nên làm tiếp (chặng app cần ôn lại, biểu hiện cần rèn, biểu hiện cô cần quan sát thêm).</li>
   </ol>
@@ -561,4 +576,100 @@ document.addEventListener('click', e => {
   const l = rosterAll().map(r => Object.assign({}, r));
   let n = l.length + 1, id; do { id = 'hs' + String(n++).padStart(2, '0'); } while (l.some(r => r.id === id));
   l.push({ id, name }); saveRoster(l); render(); toast('Đã thêm ' + name);
+});
+
+/* ── Giao bài & chấm bài (dùng chặng của app ôn tập) ──
+   Trang tính "gb-<app>": mỗi bài một dòng. v = thông tin bài; fb:<mã hs> = { lv, t, ok, at } là mức cô chấm, nhận xét, đã thẩm định. */
+let ASG = null;
+function asgList() {
+  const m = (GB[appId()] = GB[appId()] || {});
+  return Object.entries(m).filter(([, r]) => r.v && !r.v.del && r.v.cls === CLS).sort((a, b) => (b[1].v.created || 0) - (a[1].v.created || 0)).map(([k, r]) => [k, r.v]);
+}
+const forKid = (a, id) => a.target === 'all' || (a.ids || []).includes(id);
+function asgStatus(a, id) {
+  const rp = (REV[appId()] || {})[id] || {}, st = (a.stages || []).map(n => rp[n] || {});
+  const done = st.filter(x => x.done).length, tried = st.filter(x => x.tries).length;
+  const lvs = st.filter(x => x.tries).map(starLv);
+  const auto = lvs.length ? toLevel(lvs.reduce((x, y) => x + y, 0) / lvs.length) : 0;
+  const late = a.due && today() > a.due && done < st.length;
+  const k = done === st.length && st.length ? 'xong' : tried ? 'dang' : 'chua';
+  return { done, n: st.length, auto, late, k, st };
+}
+function pushAsg(aid) {
+  save(); if (!SHEET) return;
+  const r = GB[appId()][aid];
+  SYNC = 'wait'; drawSync();
+  fetch(SHEET, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ app: 'gb-' + appId(), cls: CLS, id: aid, name: (r.v || {}).title || aid, n: 1, p: r }) })
+    .then(x => x.json()).then(j => { SYNC = j.ok ? 'sheet' : 'error'; drawSync(); }).catch(() => { SYNC = 'error'; drawSync(); });
+}
+function viewAssign() {
+  const ai = appInfo();
+  if (!ai) return `<div class="card"><h2>Giao bài</h2><p class="mute">Môn ${esc(SUBJECTS[SUBJ].name)} lớp ${esc(CLS)} chưa có app ôn tập, nên chưa giao bài theo chặng được. Cô chọn môn có app (ví dụ TNXH, Công nghệ, Khoa học).</p></div>`;
+  const list = asgList(), ro = locked(), cs = criteria().filter(c => c.g === 'dt' || c.code === '2.1.1');
+  if (ASG && !list.some(([k]) => k === ASG)) ASG = null;
+  let h = `<div class="grid"><div>
+   <div class="card"><h2>Bài đã giao · ${esc(ai.name)}</h2>${list.map(([k, a]) => {
+     const kids = roster().filter(r => forKid(a, r.id)), xong = kids.filter(r => asgStatus(a, r.id).k === 'xong').length;
+     return `<button class="chip ${k === ASG ? 'on' : ''}" data-asg="${k}" style="display:block;width:100%;text-align:left;border-radius:10px;padding:8px 12px;margin-bottom:6px"><b>${esc(a.title)}</b><br><span style="font-size:12px">Chặng ${(a.stages || []).join(', ')} · ${a.target === 'all' ? 'cả lớp' : (a.ids || []).length + ' học sinh'}${a.due ? ' · hạn ' + vn(a.due) : ''} · xong ${xong}/${kids.length}</span></button>`; }).join('') || '<p class="mute">Chưa giao bài nào.</p>'}</div>
+   ${ro ? '' : `<div class="card"><h3>Giao bài mới</h3>
+    <input type="text" id="gTitle" placeholder="Tên bài (ví dụ: Ôn chủ đề Đồ dùng điện)" style="width:100%;margin-bottom:8px">
+    <div class="mute">Chọn chặng trên app:</div><div style="max-height:200px;overflow:auto;font-size:13.5px;margin-bottom:8px">${ai.stages.map(([n, t]) => `<label style="display:flex;gap:6px;padding:2px 0"><input type="checkbox" class="gSt" value="${n}"><span>${n}. ${esc(t)}</span></label>`).join('')}</div>
+    <div class="row" style="margin-bottom:8px"><label class="mute">Giao cho <select id="gTarget"><option value="all">Cả lớp</option><option value="some">Nhóm / từng học sinh</option></select></label>
+     <label class="mute">Hạn nộp <input type="date" id="gDue"></label></div>
+    <div id="gKids" hidden style="max-height:180px;overflow:auto;font-size:13.5px;margin-bottom:8px;border:1px solid var(--line);border-radius:8px;padding:6px">${roster().map((r, i) => `<label style="display:flex;gap:6px"><input type="checkbox" class="gKid" value="${r.id}">${i + 1}. ${esc(r.name)}</label>`).join('')}</div>
+    <div class="mute">Kết quả bài này là minh chứng cho:</div><div style="font-size:13.5px;margin-bottom:8px">${cs.map(c => `<label style="display:flex;gap:6px"><input type="checkbox" class="gCode" value="${esc(c.code)}" ${c.code === 'a' ? 'checked' : ''}><span><b>${esc(c.code)}</b> ${esc(short(c))}</span></label>`).join('')}</div>
+    <input type="text" id="gNote" placeholder="Lời dặn cho học sinh (không bắt buộc)" style="width:100%;margin-bottom:8px">
+    <button class="btn" id="gGo" style="width:100%">Giao bài</button></div>`}
+  </div><div>`;
+  if (!ASG) return h + `<div class="card"><h2>Giao bài và chấm bài bằng app ôn tập</h2><ol style="line-height:1.8"><li>Cô chọn các chặng trên app, giao cho cả lớp hoặc từng con, đặt hạn nộp.</li><li>Học sinh mở app ôn tập, thấy mục <b>📌 Cô giao</b> với hạn nộp và lời dặn.</li><li>App tự chấm theo sao như hiện nay. Ở đây cô xem ai đã xong, ai chưa, ai quá hạn, mức tự chấm.</li><li>Cô chỉnh mức nếu cần, viết nhận xét và bấm <b>Thẩm định</b>. Kết quả đã thẩm định thành minh chứng (hệ số 2) cho các biểu hiện đã chọn, và học sinh xem được nhận xét của cô trong app.</li></ol>
+   <p class="mute">Lưu ý: đáp án vẫn nằm trong app như hiện nay, nên đây là bài luyện tập có theo dõi, không thay cho bài kiểm tra định kì.</p></div></div></div>`;
+  const a = GB[appId()][ASG].v, row = GB[appId()][ASG], kids = roster().filter(r => forKid(a, r.id));
+  const sts = kids.map(r => ({ r, s: asgStatus(a, r.id), fb: row['fb:' + r.id] || {} }));
+  const cnt = k => sts.filter(x => x.s.k === k).length;
+  h += `<div class="card"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">${esc(a.title)}</h2>
+   <div class="mute">Chặng ${(a.stages || []).map(n => n + '. ' + ((ai.stages.find(s => s[0] === +n) || [])[1] || '')).join('; ')}${a.due ? ' · hạn ' + vn(a.due) : ''} · minh chứng cho ${(a.codes || []).join(', ') || '—'}${a.note ? ' · Lời dặn: ' + esc(a.note) : ''}</div></div>
+   <div class="row noprint">${ro ? '' : '<button class="btn ghost sm" data-ga="okall">Thẩm định tất cả bài đã xong</button><button class="btn warn sm" data-ga="del">Xoá bài</button>'}</div></div>
+   <div class="stats" style="margin-top:10px"><div class="stat"><div class="k">Đã xong</div><div class="v"><b>${cnt('xong')}</b>/${kids.length}</div></div><div class="stat"><div class="k">Đang làm</div><div class="v"><b>${cnt('dang')}</b></div></div><div class="stat"><div class="k">Chưa làm</div><div class="v"><b>${cnt('chua')}</b></div></div><div class="stat"><div class="k">Quá hạn</div><div class="v"><b style="color:var(--low)">${sts.filter(x => x.s.late).length}</b></div></div><div class="stat"><div class="k">Đã thẩm định</div><div class="v"><b>${sts.filter(x => x.fb.ok).length}</b></div></div></div></div>
+  <div class="tblw"><table><thead><tr><th>Học sinh</th>${(a.stages || []).map(n => `<th class="c">Chặng ${n}</th>`).join('')}<th class="c">Tự chấm</th><th class="c">Cô chấm</th><th style="min-width:220px">Nhận xét của cô</th><th class="c">Thẩm định</th></tr></thead><tbody>
+  ${sts.map(({ r, s, fb }, i) => `<tr><td>${i + 1}. ${esc(r.name)}<div class="mute" style="font-size:11.5px">${s.k === 'xong' ? '✅ Đã xong' : s.k === 'dang' ? '⏳ Đang làm' : '○ Chưa làm'}${s.late ? ' · <span style="color:var(--low)">quá hạn</span>' : ''}</div></td>
+   ${s.st.map(x => `<td class="c"><span class="stars">${x.tries ? (x.stars ? '★'.repeat(x.stars) : '✗') : '<span class="mute">—</span>'}</span></td>`).join('')}
+   <td class="c">${lvChip(s.auto)}</td>
+   <td class="c"><select data-gl="${r.id}" ${ro ? 'disabled' : ''}><option value="0">Theo tự chấm</option>${SC().levels.map(l => `<option value="${l.v}" ${fb.lv === l.v && fb.man ? 'selected' : ''}>${l.k}</option>`).join('')}</select></td>
+   <td><input type="text" data-gt="${r.id}" value="${esc(fb.t || '')}" maxlength="250" placeholder="Nhận xét cho con…" ${ro ? 'disabled' : ''} style="width:100%;border:1px solid var(--line);border-radius:6px;padding:4px 6px"></td>
+   <td class="c"><input type="checkbox" data-gok="${r.id}" ${fb.ok ? 'checked' : ''} ${ro || (!s.auto && !fb.man) ? 'disabled' : ''} title="${!s.auto && !fb.man ? 'Con chưa làm bài, cô chấm mức tay để thẩm định' : 'Thẩm định: kết quả thành minh chứng'}"></td></tr>`).join('')}
+  </tbody></table></div><p class="mute">Thẩm định = cô xác nhận mức. Khi đó kết quả bài thành minh chứng hệ số 2 cho ${(a.codes || []).join(', ')}, và các chặng của bài không bị tính lần nữa (tránh trùng minh chứng). Nhận xét của cô hiện cho học sinh trong app ôn tập sau khi thẩm định.</p>`;
+  return h + '</div></div>';
+}
+function setFb(id, patch) {
+  const row = GB[appId()][ASG], a = row.v, cur = Object.assign({}, row['fb:' + id] || {}, patch, { at: Date.now() });
+  if (!cur.man) cur.lv = asgStatus(a, id).auto;
+  row['fb:' + id] = cur; pushAsg(ASG);
+}
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'gTarget') { $('#gKids').hidden = t.value === 'all'; return; }
+  if (t.dataset.gl !== undefined) { const v = +t.value; setFb(t.dataset.gl, v ? { lv: v, man: true } : { man: false }); render(); return; }
+  if (t.dataset.gt !== undefined) { setFb(t.dataset.gt, { t: t.value.trim() }); return; }
+  if (t.dataset.gok !== undefined) { setFb(t.dataset.gok, { ok: t.checked }); toast(t.checked ? 'Đã thẩm định, kết quả thành minh chứng' : 'Đã bỏ thẩm định'); render(); return; }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-asg]'); if (b) { ASG = b.dataset.asg; render(); return; }
+  if (e.target.id === 'gGo') {
+    const stages = [...document.querySelectorAll('.gSt:checked')].map(x => +x.value);
+    if (!stages.length) { toast('Cô chọn ít nhất 1 chặng'); return; }
+    const target = $('#gTarget').value === 'all' ? 'all' : 'some', ids = [...document.querySelectorAll('.gKid:checked')].map(x => x.value);
+    if (target === 'some' && !ids.length) { toast('Cô chọn học sinh nhận bài'); return; }
+    const aid = 'gb' + Date.now().toString(36);
+    const ai = appInfo(), title = $('#gTitle').value.trim() || ('Ôn ' + stages.map(n => (ai.stages.find(s => s[0] === n) || [])[1]).join(', ')).slice(0, 80);
+    GB[appId()][aid] = { v: { title, stages, target, ids: target === 'all' ? [] : ids, due: $('#gDue').value, codes: [...document.querySelectorAll('.gCode:checked')].map(x => x.value), note: $('#gNote').value.trim(), cls: CLS, subj: SUBJ, created: Date.now(), at: Date.now() } };
+    ASG = aid; pushAsg(aid); render(); toast('Đã giao bài. Học sinh sẽ thấy trong app ôn tập.'); return;
+  }
+  const g = e.target.closest('[data-ga]'); if (!g) return;
+  const row = GB[appId()][ASG];
+  if (g.dataset.ga === 'del') { if (!confirm('Xoá bài đã giao? Học sinh sẽ không thấy bài này nữa, minh chứng đã thẩm định của bài cũng không còn được tính.')) return; row.v = Object.assign({}, row.v, { del: true, at: Date.now() }); pushAsg(ASG); ASG = null; render(); return; }
+  if (g.dataset.ga === 'okall') {
+    let n = 0; roster().filter(r => forKid(row.v, r.id)).forEach(r => { if (asgStatus(row.v, r.id).k === 'xong' && !(row['fb:' + r.id] || {}).ok) { const cur = Object.assign({}, row['fb:' + r.id] || {}, { ok: true, at: Date.now() }); if (!cur.man) cur.lv = asgStatus(row.v, r.id).auto; row['fb:' + r.id] = cur; n++; } });
+    pushAsg(ASG); render(); toast('Đã thẩm định ' + n + ' bài');
+  }
 });
