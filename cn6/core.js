@@ -6,7 +6,7 @@
 const A = APP, ID = A.id, TH = A.school !== 'thcs';
 const LV = TH ? ['', 'Mức 1 · Nhận biết', 'Mức 2 · Kết nối', 'Mức 3 · Vận dụng'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
 const LVs = TH ? ['', 'Mức 1', 'Mức 2', 'Mức 3'] : ['', 'Biết', 'Hiểu', 'Vận dụng'];
-const TYPE = { mcq: 'Trắc nghiệm', tf: 'Đúng hay sai', tf4: 'Đúng/Sai từng ý', short: 'Trả lời ngắn', match: 'Nối', sort: 'Phân loại', order: 'Sắp xếp thứ tự', essay: 'Tự luận', pick: 'Chọn hình' };
+const TYPE = { mcq: 'Trắc nghiệm', tf: 'Đúng hay sai', tf4: 'Đúng/Sai từng ý', short: 'Trả lời ngắn', match: 'Nối', sort: 'Phân loại', order: 'Sắp xếp thứ tự', essay: 'Tự luận', pick: 'Chọn hình', spot: 'Tìm trong tranh', tap: 'Bấm vào tranh' };
 const STEP = ['Nhắc lại kiến thức', 'Sơ đồ tư duy', 'Câu hỏi ôn tập', 'Vận dụng'];
 const STEP_EN = ['Remember', 'Mind map', 'Review questions', 'Apply'];
 if (A.theme) { const r = document.documentElement.style; Object.entries(A.theme).forEach(([k, v]) => r.setProperty('--' + k, v)); }
@@ -101,6 +101,17 @@ setTimeout(sheetPull, 0);
 
 /* ── đọc to & song ngữ ── */
 let BI = A.bilingual ? ls.get('bi', true) : false;
+/* Song ngữ câu hỏi – đáp án: EN_DICT (file en.js) dịch các chuỗi tiếng Việt; APP.enRatio = tỉ lệ câu có tiếng Anh trong mỗi chặng. */
+const ED = typeof EN_DICT !== 'undefined' ? EN_DICT : {};
+if (A.enRatio) STAGES.forEach(s => (s.q || []).forEach((q, i) => {
+  const r = A.enRatio; q._en = Math.floor((i + 1) * r) > Math.floor(i * r) && !!ED[q.q];
+  if (q._en) { q.qe = ED[q.q]; if (q.t === 'short' && ED['ANS::' + q.a[0]]) q.a = q.a.concat(ED['ANS::' + q.a[0]].split('|')); }
+  else delete q.qe;
+}));
+const ENs = (q, t) => BI && q && q._en && t && ED[t] ? `<span class="en" lang="en">${esc(ED[t])}</span>` : '';
+const optHe = (o, q) => typeof o === 'string' ? `<span>${rich(o)}${ENs(q, o)}</span>` : `${img(o[0], o[1])}${o[1] ? `<span>${rich(o[1])}${ENs(q, o[1])}</span>` : ''}`;
+const TFE = { 'Đúng': 'True', 'Sai': 'False', 'Nên': 'Should', 'Không nên': 'Should not', 'Nên làm': 'Should do' };
+const tfl = (q, t) => esc(t) + (BI && q._en && TFE[t] ? ` / ${TFE[t]}` : '');
 function speak(text, lang) {
   try {
     lang = lang || 'vi-VN';
@@ -350,11 +361,11 @@ function stepQuiz(st) {
   const tot = QZ.list.length;
   let h = taskHead(3, st.exam ? `<b>${esc(st.examTitle || 'Đề ôn tập')}</b>: làm lần lượt từng câu như khi làm bài kiểm tra thật. ${st.examNote ? esc(st.examNote) : ''}` :
     'Trả lời các câu hỏi ôn tập. Câu hỏi đi từ <b>' + LVs[1] + '</b> đến <b>' + LVs[3] + '</b>. Đọc kĩ rồi mới chọn nhé!', 'Answer the review questions.');
-  h += `<div class="qtop"><span class="pill">Câu ${QZ.i + 1}/${tot}</span><div class="prog"><i style="width:${QZ.i / tot * 100}%"></i></div>${st.exam ? '<span class="pill" data-clock>⏱ 00:00</span>' : ''}<span class="pill">✅ ${QZ.sc.reduce((a, b) => a + b, 0).toFixed(1).replace('.0', '')}</span></div>
+  h += `<div class="qtop"><span class="pill">Câu ${QZ.i + 1}/${tot}</span><div class="prog"><i style="width:${QZ.i / tot * 100}%"></i></div>${st.exam ? '<span class="pill" data-clock>⏱ 00:00</span>' : ''}<span class="pill">✅ ${QZ.sc.reduce((a, b) => a + b, 0).toFixed(1).replace('.0', '').replace('.', ',')}</span></div>
   <section class="qbox pop" data-q>
     <div class="qmeta">${q.part ? `<span class="qtype" style="background:var(--sun-soft);color:var(--ink)">${esc(q.part)}</span>` : ''}<span class="lv lv${q.lv || 1}">${LV[q.lv || 1]}</span><span class="qtype">${TYPE[q.t] || ''}</span>${q.pt ? `<span class="qtype">${String(q.pt).replace(".", ",")} điểm</span>` : ''}</div>
-    <div class="qq"><h3>${q.ctx ? `<span class="ctx">${rich(q.ctx)}</span>` : ''}${rich(q.q)}${BI && q.qe ? `<span class="en" lang="en">${esc(q.qe)}</span>` : ''}</h3><button class="say" data-sayq>🔊</button></div>
-    ${q.img ? img(q.img, '', 'qimg') : ''}
+    <div class="qq"><h3>${q.ctx ? `<span class="ctx">${rich(q.ctx)}${ENs(q, q.ctx)}</span>` : ''}${rich(q.q)}${BI && q.qe ? `<span class="en" lang="en">${esc(q.qe)}</span>` : ''}</h3><button class="say" data-sayq>🔊</button></div>
+    ${q.img && q.t !== 'spot' && q.t !== 'tap' ? img(q.img, '', 'qimg') : ''}
     <div data-ans></div>
     <div data-fb></div>
   </section>`;
@@ -380,10 +391,45 @@ const optT = o => typeof o === 'string' ? o : o[1] || '';
 const optH = o => typeof o === 'string' ? `<span>${rich(o)}</span>` : `${img(o[0], o[1])}${o[1] ? `<span>${rich(o[1])}</span>` : ''}`;
 const checkBtn = (txt) => `<div class="row" data-cb><span class="sp"></span><button class="btn main" data-check>${txt || '✔ Kiểm tra'}</button></div>`;
 const RENDER = {
+  /* Tìm các điểm trong tranh: q.hits = [[x, y, bán kính, tên], …] theo toạ độ tranh gốc q.w × q.h */
+  spot(q, box, done) {
+    const found = new Set(); let miss = 0, over = false;
+    box.innerHTML = `<p class="note">Bấm vào từng chỗ trong tranh. Đã tìm: <b data-cnt>0</b>/${q.hits.length}</p><div class="spot">${img(q.img, '')}</div><div class="found"></div>${checkBtn('Em tìm xong rồi')}`;
+    const sp = box.querySelector('.spot'), fd = box.querySelector('.found');
+    const mark = (x, y, cls, r, txt) => { const m = document.createElement('span'); m.className = 'mk ' + cls; m.style.left = x / q.w * 100 + '%'; m.style.top = y / q.h * 100 + '%'; if (r) { m.style.width = r * 2 / q.w * 100 + '%'; m.style.aspectRatio = '1'; } if (txt) m.textContent = txt; sp.appendChild(m); return m; };
+    const finish = () => {
+      if (over) return; over = true; box.querySelector('[data-cb]').remove();
+      q.hits.forEach((h, k) => { if (!found.has(k)) { mark(h[0], h[1], 'show', h[2]); fd.insertAdjacentHTML('beforeend', `<span class="miss">Chưa tìm: ${esc(h[3])}</span>`); } });
+      done(Math.max(0, found.size / q.hits.length - miss * 0.1), found.size === q.hits.length ? '' : `<p class="why">Em tìm được ${found.size}/${q.hits.length} điểm. Chỗ viền vàng là điểm em chưa tìm ra.</p>`);
+    };
+    sp.onclick = ev => {
+      if (over) return;
+      const b = sp.getBoundingClientRect(), x = (ev.clientX - b.left) / b.width * q.w, y = (ev.clientY - b.top) / b.height * q.h;
+      const k = q.hits.findIndex((h, k) => !found.has(k) && Math.hypot(h[0] - x, h[1] - y) <= h[2]);
+      if (k >= 0) { found.add(k); const h = q.hits[k]; mark(h[0], h[1], 'hit', h[2]); fd.insertAdjacentHTML('beforeend', `<span>✔ ${esc(h[3])}</span>`); box.querySelector('[data-cnt]').textContent = found.size; sfx(true); if (found.size === q.hits.length) finish(); }
+      else if (!q.hits.some(h => Math.hypot(h[0] - x, h[1] - y) <= h[2])) { miss++; const m = mark(x, y, 'miss', 0, '✘'); setTimeout(() => m.remove(), 900); }
+    };
+    box.querySelector('[data-check]').onclick = finish;
+  },
+  /* Bấm đúng bộ phận trên tranh: q.a = [[x, y, bán kính], …] */
+  tap(q, box, done) {
+    let over = false;
+    box.innerHTML = `<p class="note">Bấm thẳng vào tranh.</p><div class="spot${q.h >= q.w * 0.95 ? ' sq' : ''}">${img(q.img, '')}</div>`;
+    const sp = box.querySelector('.spot');
+    const mark = (x, y, cls, r, txt) => { const m = document.createElement('span'); m.className = 'mk ' + cls; m.style.left = x / q.w * 100 + '%'; m.style.top = y / q.h * 100 + '%'; if (r) { m.style.width = r * 2 / q.w * 100 + '%'; m.style.aspectRatio = '1'; } if (txt) m.textContent = txt; sp.appendChild(m); };
+    sp.onclick = ev => {
+      if (over) return; over = true;
+      const b = sp.getBoundingClientRect(), x = (ev.clientX - b.left) / b.width * q.w, y = (ev.clientY - b.top) / b.height * q.h;
+      const ok = q.a.some(h => Math.hypot(h[0] - x, h[1] - y) <= h[2]);
+      if (!ok) mark(x, y, 'miss', 0, '✘');
+      q.a.forEach(h => mark(h[0], h[1], ok ? 'hit' : 'show', h[2]));
+      done(ok ? 1 : 0, ok ? '' : '<p class="why">Chỗ đúng được khoanh viền vàng.</p>');
+    };
+  },
   mcq(q, box, done) {
     const ord = q.keep ? q.o.map((_, i) => i) : shuf(q.o.map((_, i) => i));
     const im = q.o.every(o => typeof o !== 'string');
-    box.innerHTML = `<div class="opts${im ? ' img' : ''}">${ord.map((oi, k) => `<button class="opt${im ? ' im' : ''}" data-o="${oi}"><span class="L">${L(k)}</span>${optH(q.o[oi])}</button>`).join('')}</div>`;
+    box.innerHTML = `<div class="opts${im ? ' img' : ''}">${ord.map((oi, k) => `<button class="opt${im ? ' im' : ''}" data-o="${oi}"><span class="L">${L(k)}</span>${optHe(q.o[oi], q)}</button>`).join('')}</div>`;
     box.querySelectorAll('.opt').forEach(b => b.onclick = () => {
       const oi = +b.dataset.o, ok = oi === q.a;
       b.classList.add(ok ? 'right' : 'wrong');
@@ -394,12 +440,12 @@ const RENDER = {
   pick(q, box, done) { RENDER.mcq(q, box, done); },
   tf(q, box, done) {
     const lb = q.labels || ['Đúng', 'Sai'];
-    box.innerHTML = `<div class="tfrow"><button class="tfb y" data-v="1">✔ ${esc(lb[0])}</button><button class="tfb n" data-v="0">✘ ${esc(lb[1])}</button></div>`;
+    box.innerHTML = `<div class="tfrow"><button class="tfb y" data-v="1">✔ ${tfl(q, lb[0])}</button><button class="tfb n" data-v="0">✘ ${tfl(q, lb[1])}</button></div>`;
     box.querySelectorAll('.tfb').forEach(b => b.onclick = () => { b.classList.add('pick'); const ok = (b.dataset.v === '1') === !!q.a; done(ok ? 1 : 0, ok ? '' : `<p class="why">Đáp án đúng: <b>${esc(q.a ? lb[0] : lb[1])}</b></p>`); });
   },
   tf4(q, box, done) {
     const v = {};
-    box.innerHTML = `<table class="t4">${q.items.map((it, i) => `<tr data-r="${i}"><td>${'abcdef'[i]})</td><td>${rich(it[0])}</td><td><button class="d" data-v="1">Đúng</button><button class="s" data-v="0">Sai</button></td></tr>`).join('')}</table>${checkBtn()}`;
+    box.innerHTML = `<table class="t4">${q.items.map((it, i) => `<tr data-r="${i}"><td>${'abcdef'[i]})</td><td>${rich(it[0])}${ENs(q, it[0])}</td><td><button class="d" data-v="1">${tfl(q, 'Đúng')}</button><button class="s" data-v="0">${tfl(q, 'Sai')}</button></td></tr>`).join('')}</table>${checkBtn()}`;
     box.querySelectorAll('tr').forEach(tr => tr.querySelectorAll('button').forEach(b => b.onclick = () => { tr.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); v[tr.dataset.r] = b.dataset.v === '1'; }));
     box.querySelector('[data-check]').onclick = () => {
       if (Object.keys(v).length < q.items.length) return box.querySelector('[data-check]').classList.add('shake'), setTimeout(() => box.querySelector('[data-check]').classList.remove('shake'), 400);
@@ -433,7 +479,7 @@ const RENDER = {
   match(q, box, done) {
     const Lf = q.pairs.map((p, i) => ({ v: p[0], i })), Rt = shuf(q.pairs.map((p, i) => ({ v: p[1], i })));
     const C = ['#2F8FD8', '#E08A1E', '#3AA85A', '#C0398B', '#7A4CC2', '#E0533D'];
-    const cell = (x, side) => `<button class="mi" data-s="${side}" data-i="${x.i}">${typeof x.v === 'string' ? `<span>${rich(x.v)}</span>` : optH(x.v)}</button>`;
+    const cell = (x, side) => `<button class="mi" data-s="${side}" data-i="${x.i}">${optHe(x.v, q)}</button>`;
     box.innerHTML = `<p class="note">Bấm một ô bên trái, rồi bấm ô phù hợp bên phải.</p><div class="match"><div class="mcol">${Lf.map(x => cell(x, 'l')).join('')}</div><div class="mcol">${Rt.map(x => cell(x, 'r')).join('')}</div></div>${checkBtn()}`;
     const pair = {}; let sel = null, ci = 0; const col = {};
     const repaint = () => box.querySelectorAll('.mi').forEach(b => {
@@ -459,8 +505,8 @@ const RENDER = {
   sort(q, box, done) {
     const items = shuf(q.items.map((it, i) => ({ v: it[0], b: it[1], i }))), at = {};
     let sel = null;
-    const chip = x => `<button class="si" data-i="${x.i}">${typeof x.v === 'string' ? esc(x.v) : optH(x.v)}</button>`;
-    box.innerHTML = `<p class="note">Bấm một thẻ, rồi bấm vào nhóm phù hợp.</p><div class="sortpool">${items.map(chip).join('')}</div><div class="bins">${q.bins.map((b, k) => `<div class="bin" role="button" tabindex="0" data-k="${k}"><h4>${esc(b)}</h4><span class="in"></span></div>`).join('')}</div>${checkBtn()}`;
+    const chip = x => `<button class="si" data-i="${x.i}">${typeof x.v === 'string' ? esc(x.v) + ENs(q, x.v) : optHe(x.v, q)}</button>`;
+    box.innerHTML = `<p class="note">Bấm một thẻ, rồi bấm vào nhóm phù hợp.</p><div class="sortpool">${items.map(chip).join('')}</div><div class="bins">${q.bins.map((b, k) => `<div class="bin" role="button" tabindex="0" data-k="${k}"><h4>${esc(b)}${ENs(q, b)}</h4><span class="in"></span></div>`).join('')}</div>${checkBtn()}`;
     const pool = box.querySelector('.sortpool');
     const drop = b => { b.querySelector('.in').appendChild(sel); at[sel.dataset.i] = +b.dataset.k; sel.classList.remove('sel'); sel = null; };
     box.querySelectorAll('.si').forEach(s => s.onclick = e => { e.stopPropagation(); const bn = s.closest('.bin'); if (sel && sel !== s && bn) return drop(bn); box.querySelectorAll('.si').forEach(x => x.classList.remove('sel')); sel = sel === s ? null : s; if (sel) s.classList.add('sel'); });
@@ -475,7 +521,7 @@ const RENDER = {
   },
   order(q, box, done) {
     const items = shuf(q.items.map((v, i) => ({ v, i }))), seq = [];
-    box.innerHTML = `<p class="note">Bấm lần lượt các bước theo đúng thứ tự (bấm lại để bỏ chọn).</p><div class="olist">${items.map(x => `<button class="oi" data-i="${x.i}"><span class="num">?</span>${typeof x.v === 'string' ? `<span>${rich(x.v)}</span>` : optH(x.v)}</button>`).join('')}</div>${checkBtn()}`;
+    box.innerHTML = `<p class="note">Bấm lần lượt các bước theo đúng thứ tự (bấm lại để bỏ chọn).</p><div class="olist">${items.map(x => `<button class="oi" data-i="${x.i}"><span class="num">?</span>${optHe(x.v, q)}</button>`).join('')}</div>${checkBtn()}`;
     const upd = () => box.querySelectorAll('.oi').forEach(b => { const k = seq.indexOf(+b.dataset.i); b.querySelector('.num').textContent = k < 0 ? '?' : k + 1; b.style.borderColor = k < 0 ? '' : 'var(--main)'; });
     box.querySelectorAll('.oi').forEach(b => b.onclick = () => { const i = +b.dataset.i, k = seq.indexOf(i); if (k < 0) seq.push(i); else seq.splice(k, 1); upd(); });
     box.querySelector('[data-check]').onclick = () => {

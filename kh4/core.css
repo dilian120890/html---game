@@ -263,3 +263,14 @@ button.pill:hover{border-color:var(--main)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+
+.spot{position:relative;border-radius:14px;overflow:hidden;border:2px solid #E3E8EF;background:#fff;cursor:crosshair;touch-action:manipulation}
+.spot img{width:100%;display:block}
+.spot.sq{max-width:460px;margin:0 auto}
+.spot .mk{position:absolute;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none}
+.spot .mk.hit{border:5px solid #2E9D55;background:rgba(46,157,85,.18);box-shadow:0 0 0 3px #fff}
+.spot .mk.miss{width:34px;height:34px;display:grid;place-items:center;background:#E0533D;color:#fff;font-weight:800;font-size:20px;box-shadow:0 0 0 3px #fff}
+.spot .mk.show{border:5px dashed #F2B705;box-shadow:0 0 0 3px #fff}
+.found{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.found span{background:#DFF3E3;color:#1F6B3A;border-radius:999px;padding:6px 12px;font-weight:700;font-size:14px}
+.found span.miss{background:#FFF3C4;color:#8A5A00}
