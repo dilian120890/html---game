@@ -8,5 +8,6 @@
 - **Ngôi nhà xanh ven biển** (Công nghệ 6, có sơ đồ tư duy điền khuyết và đề ôn giữa kì): https://dilian120890.github.io/html---game/cn6/
 - **Nông trại xanh của Hà** (Công nghệ 7, có sơ đồ tư duy điền khuyết và đề ôn giữa kì): https://dilian120890.github.io/html---game/cn7/
 - **Xưởng kĩ sư** (Công nghệ 8, có sơ đồ tư duy điền khuyết và đề ôn giữa kì): https://dilian120890.github.io/html---game/cn8/
+- **Phòng thí nghiệm nhí** (Khoa học 4, song ngữ, có sơ đồ tư duy điền khuyết và đề ôn cuối học kì 1): https://dilian120890.github.io/html---game/kh4/
 
 Tiến độ học sinh được lưu trên từng máy (trình duyệt).
