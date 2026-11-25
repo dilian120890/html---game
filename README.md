@@ -13,4 +13,8 @@ Từ lớp 3, một phần câu hỏi và đáp án có thêm tiếng Anh (lớp
 - **Nông trại xanh của Hà** (Công nghệ 7, song ngữ): https://dilian120890.github.io/html---game/cn7/
 - **Xưởng kĩ sư** (Công nghệ 8, song ngữ): https://dilian120890.github.io/html---game/cn8/
 
+## Dành cho cô
+
+- **Sổ đánh giá năng lực** (quan sát lớp học, minh chứng từ app ôn tập, nhận xét TT27/TT22): https://dilian120890.github.io/html---game/danh-gia-nang-luc/
+
 Tiến độ học sinh được lưu trên từng máy (trình duyệt).
