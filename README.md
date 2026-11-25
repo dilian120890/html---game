@@ -15,7 +15,7 @@ Từ lớp 3, một phần câu hỏi và đáp án có thêm tiếng Anh (lớp
 
 ## Dành cho cô
 
-- **Kế hoạch tuần** (nhập luồng công việc, app tự chia việc theo ngày giờ có tick hoàn thành, báo cáo tuần/tháng): https://dilian120890.github.io/html---game/ke-hoach-tuan/
+- **AI Weekly Planner · Kế hoạch tuần** (8 phân hệ: tổng quan, hôm nay, kế hoạch tuần, luồng công việc, nhiệm vụ chính, tất cả công việc, báo cáo tuần/tháng, cài đặt; Auto Plan, Re-plan có xem trước, chuyển tiếp có nhật ký, lưu trên máy): https://dilian120890.github.io/html---game/ke-hoach-tuan/
 - **Sổ đánh giá năng lực** (quan sát lớp học, minh chứng từ app ôn tập, nhận xét TT27/TT22): https://dilian120890.github.io/html---game/danh-gia-nang-luc/
 
 Tiến độ học sinh được lưu trên từng máy (trình duyệt).
