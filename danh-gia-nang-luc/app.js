@@ -42,8 +42,11 @@ fixSubj();
 const appId = () => (subjList().find(s => s[0] === SUBJ) || [])[1] || '';
 const sheetApp = () => 'dg-' + SUBJ + '-' + CLS;
 const fwKey = () => SUBJ + '-' + school();
-const period = () => PERIODS.find(p => p.id === PER) || PERIODS[0];
-const roster = () => (ROSTERS[CLS] || []).map(([id, name]) => ({ id, name }));
+const GD = () => (CFG._gd && CFG._gd.list && CFG._gd.list.length ? CFG._gd.list : PERIODS);
+const period = () => GD().find(p => p.id === PER) || GD()[0];
+const rosterAll = () => { const c = CFG['ds-' + CLS]; return c && c.list ? c.list : (ROSTERS[CLS] || []).map(([id, name]) => ({ id, name })); };
+const roster = () => rosterAll().filter(r => !r.off);
+const nameOf = (cls, id) => { const c = CFG['ds-' + cls]; const l = c && c.list ? c.list.map(r => [r.id, r.name]) : (ROSTERS[cls] || []); return (l.find(r => r[0] === id) || [])[1] || id; };
 const locked = () => !!(CFG._khoa && CFG._khoa.v);
 const D = () => (DATA[sheetApp()] = DATA[sheetApp()] || {});
 const P = id => (D()[id] = D()[id] || {});
@@ -88,7 +91,7 @@ function queue(id) {
 }
 function flush() {
   const jobs = Object.values(pushQ).map(({ app, id }) => {
-    const name = id === '_phien' ? '(Phiên quan sát)' : ((ROSTERS[app.split('-')[2]] || []).find(r => r[0] === id) || [])[1] || id;
+    const name = id === '_phien' ? '(Phiên quan sát)' : nameOf(app.split('-')[2], id);
     const body = JSON.stringify({ app, cls: app.split('-')[2], id, name, n: 1, p: (DATA[app] || {})[id] || {} });
     return fetch(SHEET, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body }).then(r => r.json());
   });
@@ -131,7 +134,7 @@ function evidences(id, c, per) {
     const rp = rv[id] || {};
     if (c.app === 'done') {
       const n = ai.stages.length, done = ai.stages.filter(([sn]) => rp[sn] && rp[sn].done && dstr(rp[sn].at || 0) <= per.to).length;
-      if (Object.keys(rv).length) {
+      if (rv[id]) { /* chỉ tính khi con đã mở app; chưa mở thì để cô quan sát thêm */
         const r = done / n, M = MAXLV();
         const lv = M === 4 ? (r >= .8 ? 4 : r >= .65 ? 3 : r >= .5 ? 2 : 1) : (r >= .8 ? 3 : r >= .5 ? 2 : 1);
         out.push({ src: 'app', lv, date: per.to < today() ? per.to : today(), label: 'App: xong ' + done + '/' + n + ' chặng', w: 1 });
@@ -148,16 +151,20 @@ function evidences(id, c, per) {
   return out.sort((a, b) => b.date.localeCompare(a.date));
 }
 function toLevel(avg) { if (avg == null) return 0; const cut = SC().cut; let v = 1; cut.forEach(x => { if (avg >= x) v++; }); return v; }
-function assess(id, c) {
-  const ev = evidences(id, c);
-  const ov = P(id)['ov:' + c.code + '@' + PER];
+function assess(id, c, per) {
+  per = per || period();
+  const ev = evidences(id, c, per);
+  const ov = P(id)['ov:' + c.code + '@' + per.id];
   let sw = 0, s = 0; ev.forEach(e => { sw += e.w; s += e.w * e.lv; });
   const auto = sw ? toLevel(s / sw) : 0;
   const lv = ov && ov.lv ? ov.lv : auto;
-  return { ev, auto, lv, ov: ov && ov.lv ? ov.lv : 0, gap: ev.length < 2 && !(ov && ov.lv) };
+  /* xu hướng: so mức của minh chứng mới nhất với minh chứng liền trước */
+  const last = ev[0] ? ev[0].lv : 0, prev = ev[1] ? ev[1].lv : 0;
+  const trend = !ev.length ? '' : ev.length === 1 ? 'NEW' : last > prev ? 'UP' : last < prev ? 'DOWN' : 'STABLE';
+  return { ev, auto, lv, ov: ov && ov.lv ? ov.lv : 0, gap: ev.length < 2 && !(ov && ov.lv), last, prev, avg: sw ? s / sw : 0, trend };
 }
-function studentSummary(id) {
-  const cs = criteria(), rows = cs.map(c => ({ c, a: assess(id, c) }));
+function studentSummary(id, per) {
+  const cs = criteria(), rows = cs.map(c => ({ c, a: assess(id, c, per) }));
   const grp = {};
   Object.keys(GROUPS).forEach(g => {
     const l = rows.filter(r => r.c.g === g && r.a.lv);
@@ -169,6 +176,8 @@ function studentSummary(id) {
   if (gaps <= rows.length / 2 && dt) tag = dt === 1 ? 'SUPPORT' : dt === M ? 'CHALLENGE' : 'PRACTICE';
   return { rows, grp, nEv, gaps, tag };
 }
+const TREND = { UP: ['▲', 'Tăng', 'var(--top)'], DOWN: ['▼', 'Giảm', 'var(--low)'], STABLE: ['●', 'Ổn định', '#98A2B3'], NEW: ['✦', 'Mới có dữ liệu', 'var(--main)'] };
+const trendChip = t => t ? `<span title="${TREND[t][1]}" style="color:${TREND[t][2]};font-size:12px;font-weight:700;white-space:nowrap">${TREND[t][0]} ${TREND[t][1]}</span>` : '';
 const TAGS = { SUPPORT: 'Cần hỗ trợ', PRACTICE: 'Luyện tập củng cố', CHALLENGE: 'Thử thách mở rộng', GAP: 'Cần thêm minh chứng' };
 function lvChip(v, small) {
   if (!v) return '<span class="lv none">—</span>';
@@ -194,8 +203,8 @@ function compose(id) {
 function header() {
   $('#selCls').innerHTML = CLASSES.map(c => `<option ${c === CLS ? 'selected' : ''}>${c}</option>`).join('');
   $('#selSub').innerHTML = subjList().map(([s]) => `<option value="${s}" ${s === SUBJ ? 'selected' : ''}>${SUBJECTS[s].name}</option>`).join('');
-  $('#selPer').innerHTML = PERIODS.map(p => `<option value="${p.id}" ${p.id === PER ? 'selected' : ''}>${p.name}</option>`).join('');
-  const T = [['obs', 'Quan sát lớp học'], ['hs', 'Hồ sơ học sinh'], ['lop', 'Tổng hợp lớp'], ['tc', 'Bộ tiêu chí'], ['hd', 'Hướng dẫn']];
+  $('#selPer').innerHTML = GD().map(p => `<option value="${p.id}" ${p.id === PER ? 'selected' : ''}>${p.name}</option>`).join('');
+  const T = [['obs', 'Quan sát lớp học'], ['hs', 'Hồ sơ học sinh'], ['lop', 'Tổng hợp lớp'], ['tc', 'Bộ tiêu chí'], ['ql', 'Lớp & năm học'], ['hd', 'Hướng dẫn']];
   $('#tabs').innerHTML = T.map(([k, n]) => `<button data-tab="${k}" class="${k === TAB ? 'on' : ''}">${n}</button>`).join('');
   drawSync();
 }
@@ -206,7 +215,7 @@ $('#sync').onclick = () => pull(true);
 $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; TAB = b.dataset.tab; LS.set('tab', TAB); header(); render(); };
 
 function render() {
-  const v = { obs: viewObs, hs: viewStudent, lop: viewClass, tc: viewCriteria, hd: viewHelp }[TAB] || viewObs;
+  const v = { obs: viewObs, hs: viewStudent, lop: viewClass, tc: viewCriteria, ql: viewManage, hd: viewHelp }[TAB] || viewObs;
   $('#app').innerHTML = v();
   drawSync();
 }
@@ -253,14 +262,14 @@ function obsMatrix(k, s) {
    <div class="row noprint">${locked() ? '' : s.status === 'SUBMITTED'
       ? '<button class="btn ghost" data-act="reopen">Chỉnh sửa phiếu</button>'
       : '<button class="btn" data-act="submit">Chốt phiên quan sát</button><button class="btn warn sm" data-act="delsess">Xoá phiên</button>'}</div></div></div>
-  <div class="tblw"><table class="mx"><thead><tr><th>Học sinh</th>${cs.map(c => `<th class="c" title="${esc(c.name)}"><b>${esc(c.code)}</b><span>${esc(short(c))}</span>
+  <div class="tblw"><table class="mx"><thead><tr><th>Học sinh</th>${cs.map(c => `<th class="c" title="${esc(c.name + '\n' + (c.measure || '') + '\n' + (c.t || []).map((x, j) => ['CHT', 'HT', 'HTT'][j] + ': ' + x).join('\n'))}"><b>${esc(c.code)}</b><span>${esc(short(c))}</span>
    ${ro ? '' : `<select data-fill="${esc(c.code)}"><option value="">Cả lớp…</option>${SC().levels.map(l => `<option value="${l.v}">${l.k}</option>`).join('')}<option value="0">Xoá</option></select>`}</th>`).join('')}<th style="min-width:200px">Ghi chú</th></tr></thead><tbody>`;
   kids.forEach((r, i) => {
     const p = P(r.id);
     h += `<tr><td>${i + 1}. ${esc(r.name)}</td>${cs.map(c => {
       const v = (p[c.code + '@' + k] || {}).lv || 0, l = lvObj(v);
       return `<td class="c"><button class="cell lv ${v ? l.tone : 'none'}" ${ro ? 'disabled' : ''} data-cell="${esc(r.id)}|${esc(c.code)}">${v ? l.k : '—'}</button></td>`;
-    }).join('')}<td><input type="text" data-note="${esc(r.id)}" value="${esc((p['note@' + k] || {}).t || '')}" ${ro ? 'disabled' : ''} placeholder="Ghi chú hành vi…" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:4px 6px"></td></tr>`;
+    }).join('')}<td><input type="text" data-note="${esc(r.id)}" value="${esc((p['note@' + k] || {}).t || '')}" ${ro ? 'disabled' : ''} maxlength="250" placeholder="Ghi chú hành vi (tối đa 250 kí tự)…" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:4px 6px"></td></tr>`;
   });
   return h + `</tbody></table></div>
   <div class="legend" style="margin-top:8px">${SC().levels.map(l => `<span>${lvChip(l.v)} ${l.name}</span>`).join('')}<span>${lvChip(0)} Chưa quan sát</span></div>`;
@@ -291,7 +300,7 @@ document.addEventListener('click', e => {
     ss[k] = { date, tiet, bai: $('#nBai').value.trim(), codes, status: 'DRAFT', at: Date.now() };
     /* sheet chỉ gộp theo khoá ở cấp 1, nên lưu cả phiên vào một khoá */
     SESSION = k; queue('_phien');
-    const per = PERIODS.find(p => p.id !== 'all' && date >= p.from && date <= p.to);
+    const per = GD().find(p => p.id !== 'all' && date >= p.from && date <= p.to);
     if (per && date !== '' && (date < period().from || date > period().to)) { PER = per.id; LS.set('per', PER); header(); }
     render(); return;
   }
@@ -355,12 +364,14 @@ function viewStudent() {
     <p class="mute">Tự ghép từ câu ghi nhận (mức cao nhất) và câu gợi mở (mức thấp hơn) của từng nhóm. Số trong câu là ngưỡng mẫu, cô thay bằng số thực tế của con. Cô sửa trực tiếp, app tự lưu.</p>
     <textarea id="nxText" ${ro ? 'disabled' : ''} placeholder="Chưa có minh chứng nào trong giai đoạn này. Cô ghi mức ở tab Quan sát lớp học, hoặc chờ học sinh làm app ôn tập, rồi bấm Ghép lại từ ma trận.">${esc(text)}</textarea>
     ${nx && nx.t ? '<div class="mute">Đã lưu bản cô chỉnh.</div>' : '<div class="mute">Bản tự ghép (chưa chỉnh).</div>'}</div>
+   ${suggestCard(SID, S)}
+   ${historyCard(SID)}
    ${notes.length ? `<div class="card"><h3>Ghi chú quan sát của cô</h3>${notes.map(([d, t, b]) => `<div class="stage"><span>📝 ${esc(t)}</span><span class="mute">${vn(d)}${b ? ' · ' + esc(b) : ''}</span></div>`).join('')}</div>` : ''}
-   <div class="card"><h2>Biểu hiện và minh chứng</h2><div class="tblw" style="max-height:none"><table><thead><tr><th>Mã</th><th>Biểu hiện</th><th>Minh chứng (mới nhất trước)</th><th>Tự tính</th><th>Cô chốt</th></tr></thead><tbody>
+   <div class="card"><h2>Biểu hiện và minh chứng</h2><div class="tblw" style="max-height:none"><table><thead><tr><th>Mã</th><th>Biểu hiện</th><th>Minh chứng (mới nhất trước)</th><th>Tự tính</th><th>Xu hướng</th><th>Cô chốt</th></tr></thead><tbody>
    ${S.rows.map(({ c, a }) => `<tr><td><b>${esc(c.code)}</b><div class="mute">${GROUPS[c.g]}</div></td><td style="min-width:300px;font-size:13.5px">${esc(c.name)}<div class="mute">${esc(c.bloom || '')} · ${esc(c.measure || '')}</div></td>
     <td><div class="ev">${a.ev.map(e => `<span class="${e.src}" title="${esc(e.label)}">${e.src === 'gv' ? '👁 ' + vn(e.date).slice(0, 5) : '📱 ' + esc(e.label.replace(/^App: /, '').slice(0, 34))} ${lvObj(e.lv).k}</span>`).join('') || '<span class="mute">—</span>'}</div>${a.gap ? '<div class="gap">Cần thêm minh chứng (tối thiểu 2)</div>' : ''}
 </td>
-    <td>${lvChip(a.auto)}</td><td><select data-ov="${esc(c.code)}" ${ro ? 'disabled' : ''}><option value="0">Tự động</option>${SC().levels.map(l => `<option value="${l.v}" ${a.ov === l.v ? 'selected' : ''}>${l.k}</option>`).join('')}</select></td></tr>`).join('')}
+    <td>${lvChip(a.auto)}</td><td>${trendChip(a.trend)}${a.prev ? `<div class="mute" style="font-size:11px">gần nhất ${lvObj(a.last).k}, trước ${lvObj(a.prev).k}</div>` : ''}</td><td><select data-ov="${esc(c.code)}" ${ro ? 'disabled' : ''}><option value="0">Tự động</option>${SC().levels.map(l => `<option value="${l.v}" ${a.ov === l.v ? 'selected' : ''}>${l.k}</option>`).join('')}</select></td></tr>`).join('')}
    </tbody></table></div></div>
   </div></div>`;
   return h;
@@ -401,7 +412,18 @@ function viewClass() {
     ${S.rows.map(r => `<td class="c" ${r.a.gap && r.a.lv ? 'style="opacity:.6" title="Mới có ' + r.a.ev.length + ' minh chứng"' : ''}>${lvChip(r.a.lv)}</td>`).join('')}
     ${Object.keys(GROUPS).map(g => `<td class="c">${lvChip(S.grp[g])}</td>`).join('')}<td class="c">${lvChip(S.grp.dt)}</td><td><span class="tag ${S.tag}">${TAGS[S.tag]}</span></td></tr>`;
   });
-  return h + `</tbody></table></div><p class="mute">Bấm tên học sinh để mở hồ sơ. Ô mờ là mức mới có 1 minh chứng, nên quan sát thêm. "Mức môn (gợi ý)" lấy theo năng lực đặc thù; ${school() === 'th' ? 'theo TT27, môn TNXH, Khoa học, Công nghệ tiểu học ghi mức HTT/HT/CHT và nhận xét, không cho điểm.' : 'theo TT22, Công nghệ THCS còn có điểm kiểm tra định kì, mức ở đây dùng cho nhận xét.'}</p>`;
+  h += `</tbody></table></div>`;
+  /* báo cáo theo biểu hiện: phát hiện biểu hiện cả lớp còn yếu */
+  const byC = cs.map((c, j) => { const cnt = SC().levels.map(l => sums.filter(x => x.S.rows[j].a.lv === l.v).length); const n = cnt.reduce((a, b) => a + b, 0);
+    const avg = n ? cnt.reduce((a, b, i) => a + b * (i + 1), 0) / n : 0; return { c, cnt, n, avg }; });
+  const weakest = byC.filter(x => x.n >= Math.min(3, kids.length)).sort((a, b) => a.avg - b.avg).slice(0, 3);
+  h += `<div class="grid" style="margin-top:16px"><div class="card"><h3>Theo biểu hiện</h3>
+   ${weakest.length ? `<p class="mute">Biểu hiện cả lớp còn yếu nhất: <b>${weakest.map(x => esc(x.c.code + ' ' + short(x.c))).join(', ')}</b>. Nên ưu tiên tổ chức hoạt động và quan sát thêm các biểu hiện này.</p>` : '<p class="mute">Chưa có dữ liệu.</p>'}
+   ${byC.map(x => `<div style="margin:8px 0"><div class="row" style="justify-content:space-between;font-size:13px"><span><b>${esc(x.c.code)}</b> ${esc(short(x.c))}</span><span class="mute">${x.n}/${kids.length} có mức</span></div>
+    <div class="bar">${SC().levels.map((l, i) => `<i style="width:${100 * x.cnt[i] / Math.max(1, kids.length)}%;background:${colors[l.tone]}" title="${l.name}: ${x.cnt[i]}"></i>`).join('')}</div></div>`).join('')}</div>
+   <div class="card"><h3>Theo phiên quan sát</h3>${sessList().map(([k, ss]) => { let o = 0, t = 0; kids.forEach(r => (ss.codes || []).forEach(code => { t++; if ((P(r.id)[code + '@' + k] || {}).lv) o++; }));
+     return `<div class="stage"><span>${vn(ss.date)} · Tiết ${esc(ss.tiet)} · ${esc(ss.bai || '')} ${ss.status === 'SUBMITTED' ? '🔒' : '✏️'}</span><span class="mute">${o}/${t} ô đã quan sát</span></div>`; }).join('') || '<p class="mute">Chưa có phiên nào trong giai đoạn này.</p>'}</div></div>`;
+  return h + `<p class="mute">Bấm tên học sinh để mở hồ sơ. Ô mờ là mức mới có 1 minh chứng, nên quan sát thêm. "Mức môn (gợi ý)" lấy theo năng lực đặc thù; ${school() === 'th' ? 'theo TT27, môn TNXH, Khoa học, Công nghệ tiểu học ghi mức HTT/HT/CHT và nhận xét, không cho điểm.' : 'theo TT22, Công nghệ THCS còn có điểm kiểm tra định kì, mức ở đây dùng cho nhận xét.'}</p>`;
 }
 function classAction(a) {
   const kids = roster(), cs = criteria();
@@ -437,8 +459,6 @@ function viewCriteria() {
    <label>Câu gợi mở khi ${lv[0].k}<textarea data-f="low" ${ro ? 'disabled' : ''}>${esc(c.low || '')}</textarea></label>
    <label>Câu gợi mở khi ${lv.slice(1, -1).map(l => l.k).join(', ')}<textarea data-f="mid" ${ro ? 'disabled' : ''}>${esc(c.mid || '')}</textarea></label></div>
    ${ro ? '' : `<div class="full" style="text-align:right"><button class="btn warn sm" data-tc="del" data-di="${i}">Xoá biểu hiện</button></div>`}</div>`).join('')}</div>
-  <div class="card"><h3>Khoá năm học</h3><p class="mute">Khi khoá, mọi dữ liệu chỉ còn xem, không sửa được (giữ nguyên học bạ cuối năm).</p>
-   <button class="btn ${locked() ? 'ghost' : 'warn'}" data-tc="lock">${locked() ? '🔓 Mở khoá năm học' : '🔒 Khoá năm học 2026 – 2027'}</button></div>
   <input type="file" id="tcFile" accept=".json" hidden>`;
 }
 function saveCriteria(items) { CFG[fwKey()] = { items, at: Date.now() }; pushCfg(fwKey()); }
@@ -469,9 +489,76 @@ function viewHelp() {
    <li><b>Minh chứng tự động</b>: kết quả các chặng trên app ôn tập (Google Sheet) tự thành minh chứng cho năng lực nhận thức, vận dụng và tự học (3 sao = ${SC().levels[SC().levels.length - 1].k}, 2 sao = ${SC().levels[SC().levels.length - 2].k}, 1 sao hoặc chưa đạt = ${SC().levels[0].k}${school() === 'thcs' ? ', theo thang 4 mức' : ''}).</li>
    <li><b>Hồ sơ học sinh</b>: mức từng biểu hiện được tính từ mọi minh chứng trong giai đoạn (quan sát của cô tính hệ số 2, app tính hệ số 1). Biểu hiện có dưới 2 minh chứng được báo "cần thêm minh chứng". Cô luôn có quyền <b>chốt mức</b> thủ công.</li>
    <li><b>Nhận xét</b>: app tự ghép câu ghi nhận và câu gợi mở theo ma trận; cô sửa trực tiếp, app tự lưu. Ở tab Tổng hợp lớp cô sao chép nhận xét cả lớp hoặc tải bảng Excel.</li>
-   <li><b>Bộ tiêu chí</b>: sửa mã, biểu hiện, ngưỡng và câu nhận xét cho khớp KHDH của trường. Cuối năm có thể khoá năm học.</li>
+   <li><b>Bộ tiêu chí</b>: sửa mã, biểu hiện, ngưỡng và câu nhận xét cho khớp KHDH của trường.</li>
+   <li><b>Lớp & năm học</b>: thêm học sinh, sửa tên, đánh dấu học sinh nghỉ; sửa ngày các giai đoạn; cuối năm khoá năm học.</li>
+   <li><b>Theo dõi tiến bộ</b>: hồ sơ học sinh có xu hướng từng biểu hiện (tăng, giảm, ổn định), lịch sử qua các giai đoạn và đề xuất việc nên làm tiếp (chặng app cần ôn lại, biểu hiện cần rèn, biểu hiện cô cần quan sát thêm).</li>
   </ol>
   <p class="mute">Dữ liệu lưu trên máy và trên Google Sheet của cô (trang tính dg-…), hoàn toàn miễn phí, không cần Firebase. Mở trên máy khác, bấm nút đồng bộ ở góc trên để tải về.</p></div>`;
 }
 
 header(); render(); pull();
+
+/* ── Lịch sử phát triển qua các giai đoạn ── */
+function historyCard(id) {
+  const pers = GD().filter(p => p.id !== 'all' && p.from <= today());
+  if (!pers.length) return '';
+  const rows = pers.map(p => ({ p, S: studentSummary(id, p) }));
+  return `<div class="card"><h3>Lịch sử phát triển</h3><div class="tblw" style="max-height:none"><table><thead><tr><th>Giai đoạn</th>${Object.values(GROUPS).map(n => `<th class="c">${n}</th>`).join('')}<th class="c">Minh chứng</th></tr></thead><tbody>
+   ${rows.map(({ p, S }, i) => `<tr><td>${esc(p.name)}<div class="mute" style="font-size:11px">${vn(p.from).slice(0, 5)} – ${vn(p.to).slice(0, 5)}</div></td>${Object.keys(GROUPS).map(g => { const pv = i ? rows[i - 1].S.grp[g] : 0, v = S.grp[g]; return `<td class="c">${lvChip(v)}${pv && v ? (v > pv ? ' <span style="color:var(--top)">▲</span>' : v < pv ? ' <span style="color:var(--low)">▼</span>' : '') : ''}</td>`; }).join('')}<td class="c">${S.nEv}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+/* ── Đề xuất cá nhân hoá: Đánh giá → nhu cầu → việc nên làm tiếp ── */
+function suggestions(id, S) {
+  const out = [], M = MAXLV(), ai = appInfo(), rp = ai && REV[ai.id] ? (REV[ai.id][id] || {}) : null;
+  const weak = S.rows.filter(r => r.a.lv && r.a.lv < M).sort((a, b) => a.a.lv - b.a.lv);
+  if (rp) {
+    const todo = ai.stages.filter(([sn]) => !(rp[sn] && rp[sn].done)).map(([sn, t]) => sn + '. ' + t);
+    const low = ai.stages.filter(([sn]) => rp[sn] && rp[sn].tries && (rp[sn].stars || 0) < 3).map(([sn, t]) => sn + '. ' + t);
+    if (low.length) out.push(['Ôn lại để đạt 3 sao', 'Chặng ' + low.slice(0, 4).join('; ')]);
+    if (todo.length) out.push(['Hoàn thành chặng còn thiếu trên app', todo.length + ' chặng, bắt đầu từ: ' + todo.slice(0, 3).join('; ')]);
+  }
+  weak.slice(0, 2).forEach(r => out.push(['Rèn thêm ' + r.c.code + ' · ' + short(r.c), em(r.c.mid && r.a.lv > 1 ? r.c.mid : r.c.low)]));
+  const gaps = S.rows.filter(r => r.a.gap).map(r => r.c.code);
+  if (gaps.length) out.push(['Cô cần quan sát thêm', 'Biểu hiện ' + gaps.join(', ') + ' (mỗi biểu hiện tối thiểu 2 minh chứng)']);
+  if (!weak.length && S.grp.dt === M) out.push(['Thử thách mở rộng', 'Giao nhiệm vụ vận dụng hoặc làm nhóm trưởng hướng dẫn bạn']);
+  return out;
+}
+function suggestCard(id, S) {
+  const l = suggestions(id, S); if (!l.length) return '';
+  return `<div class="card"><h3>Đề xuất tiếp theo cho con</h3>${l.map(([t, d]) => `<div class="stage" style="display:block"><b>${esc(t)}</b><div class="mute">${esc(d)}</div></div>`).join('')}</div>`;
+}
+
+/* ── Lớp & năm học: danh sách học sinh, các giai đoạn, khoá năm học ── */
+function viewManage() {
+  const ro = locked(), all = rosterAll(), custom = !!(CFG['ds-' + CLS] && CFG['ds-' + CLS].list);
+  return `<div class="grid"><div>
+  <div class="card"><h2>Học sinh lớp ${esc(CLS)}</h2>
+   <p class="mute">${custom ? 'Đang dùng danh sách cô đã chỉnh.' : 'Danh sách lấy từ app ôn tập.'} Mã hs01… giữ cố định để nối với kết quả app ôn tập; học sinh chuyển đi thì đánh dấu "Nghỉ" để giữ lại minh chứng cũ.</p>
+   <table><thead><tr><th>Mã</th><th>Họ và tên</th><th>Trạng thái</th></tr></thead><tbody>
+   ${all.map((r, i) => `<tr><td class="mute">${esc(r.id)}</td><td><input type="text" data-rn="${i}" value="${esc(r.name)}" ${ro ? 'disabled' : ''} style="width:100%"></td>
+    <td><select data-ro="${i}" ${ro ? 'disabled' : ''}><option value="">Đang học</option><option value="1" ${r.off ? 'selected' : ''}>Nghỉ / chuyển lớp</option></select></td></tr>`).join('')}</tbody></table>
+   ${ro ? '' : `<div class="row" style="margin-top:10px"><input type="text" id="newHs" placeholder="Họ và tên học sinh mới" style="flex:1"><button class="btn sm" data-mg="add">+ Thêm</button></div>`}</div>
+  </div><div>
+  <div class="card"><h2>Năm học 2026 – 2027 · Các giai đoạn đánh giá</h2>
+   <p class="mute">Minh chứng được tính vào giai đoạn theo ngày quan sát hoặc ngày học sinh làm app.</p>
+   <table><thead><tr><th>Giai đoạn</th><th>Từ ngày</th><th>Đến ngày</th></tr></thead><tbody>
+   ${GD().map((g, i) => `<tr><td>${esc(g.name)}</td><td><input type="date" data-gd="${i}|from" value="${g.from}" ${ro ? 'disabled' : ''}></td><td><input type="date" data-gd="${i}|to" value="${g.to}" ${ro ? 'disabled' : ''}></td></tr>`).join('')}</tbody></table></div>
+  <div class="card"><h3>Khoá năm học</h3><p class="mute">Khi khoá, mọi dữ liệu chỉ còn xem, không sửa được (giữ nguyên học bạ cuối năm).</p>
+   <button class="btn ${locked() ? 'ghost' : 'warn'}" data-tc="lock">${locked() ? '🔓 Mở khoá năm học' : '🔒 Khoá năm học 2026 – 2027'}</button></div>
+  </div></div>`;
+}
+function saveRoster(list) { CFG['ds-' + CLS] = { list, at: Date.now() }; pushCfg('ds-' + CLS); }
+document.addEventListener('change', e => {
+  const t = e.target, list = () => rosterAll().map(r => Object.assign({}, r));
+  if (t.dataset.rn !== undefined) { const l = list(); l[+t.dataset.rn].name = t.value.trim() || l[+t.dataset.rn].name; saveRoster(l); toast('Đã lưu tên học sinh'); }
+  if (t.dataset.ro !== undefined) { const l = list(); l[+t.dataset.ro].off = !!t.value; saveRoster(l); toast('Đã cập nhật trạng thái'); }
+  if (t.dataset.gd !== undefined) { const [i, f] = t.dataset.gd.split('|'); const l = GD().map(g => Object.assign({}, g)); l[+i][f] = t.value; CFG._gd = { list: l, at: Date.now() }; pushCfg('_gd'); header(); toast('Đã lưu ngày giai đoạn'); }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-mg]'); if (!b) return;
+  const name = ($('#newHs').value || '').trim(); if (!name) { toast('Cô nhập họ tên học sinh'); return; }
+  const l = rosterAll().map(r => Object.assign({}, r));
+  let n = l.length + 1, id; do { id = 'hs' + String(n++).padStart(2, '0'); } while (l.some(r => r.id === id));
+  l.push({ id, name }); saveRoster(l); render(); toast('Đã thêm ' + name);
+});
