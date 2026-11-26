@@ -245,7 +245,7 @@ function drApply(j,why){
   if(MODE==='USER')snapshot('Trước khi tải dữ liệu từ Drive');
   const d=j.data;D={tasks:d.tasks||[],ws:d.ws||[],mt:d.mt||[],set:{...defSet(),...(d.set||{})},hist:d.hist&&Array.isArray(d.hist.events)?{weeks:{},...d.hist}:{events:[],weeks:{}}};
   MODE='USER';PROBLEMS=[];DR.rev=j.rev;DR.at=j.at;DR.dirty=0;DR.remote=null;DR.err='';drState='ok';drSave();
-  drSilent=true;persist();drSilent=false;autoWeek();if(nd16Fix(true))persist();render();toast(why||'Đã tải dữ liệu mới nhất từ Drive');
+  drSilent=true;persist();drSilent=false;autoWeek();if(nd16Fix(true)+proj16(true))persist();render();toast(why||'Đã tải dữ liệu mới nhất từ Drive');
 }
 async function drPull(manual,quiet){
   if(!drOn()||drBusy)return;if(!manual&&Date.now()-drLastPull<45000)return;drLastPull=Date.now();
@@ -862,8 +862,37 @@ function applyND16(){
   ND16.extra.forEach(([title,dur,pr,note])=>{if(D.tasks.some(t=>t.title===title))return;const t={id:uid(),title,wsId:(D.ws.find(w=>/giảng dạy/i.test(w.name))||D.ws[0]||{}).id||'',mtId:'',date:'',start:'',dur,deadline:fri,priority:pr,status:'todo',note,rolloverCount:0,originalDate:'',originalDeadline:fri,src:ND16.src,createdAt:now};
     const s=findSlot(b,dur,dates,from,0,fri);if(s){occupy(b,{...s,m:dur});t.date=t.originalDate=s.date;t.start=s.start}D.tasks.push(t);add++});
   logE({type:'import',src:ND16.src,reason:`Gắn nội dung học tập tuần 16–17: cập nhật ${n} việc, thêm ${add} việc`});
-  nd16Fix(true);
+  nd16Fix(true);proj16(true);
   wkView=wk;commit(`Đã gắn nội dung bài học vào ${n} việc và thêm ${add} việc`);
+}
+/* Dự án cô đã làm trong tuần 16 (nguồn: repo html---game trên GitHub Pages), đưa vào kế hoạch làm việc đã xong để báo cáo có minh chứng.
+   [ngày, giờ xong, luồng, tên, ghi chú/minh chứng, phút ước tính] */
+const PJ16={src:'du-an-t16',base:'https://dilian120890.github.io/html---game/',items:[
+  ['2026-11-23','14:56','Giảng dạy','Học liệu số: game ôn tập TNXH 1 "Bé đi khắp nơi"','Học liệu ôn tập HK1, lớp 1 · ','',60],
+  ['2026-11-23','14:32','Giảng dạy','Học liệu số: game ôn tập TNXH 2 "Thành phố nhí của em"','Học liệu ôn tập HK1, lớp 2, có phần tiếng Anh · ','tnxh2/',60],
+  ['2026-11-23','15:21','Giảng dạy','Học liệu số: app ôn tập TNXH 3 "Hộ chiếu nhà thám hiểm"','16 chặng, song ngữ, danh sách lớp 3G1, lưu tiến độ lên Google Sheet · ','tnxh3/',60],
+  ['2026-11-24','10:18','Giảng dạy','Học liệu số: app ôn tập Công nghệ 3 "Kĩ sư ngôi nhà thông minh"','7 chặng, song ngữ · ','cn3/',60],
+  ['2026-11-25','08:37','Giảng dạy','Học liệu số: app ôn tập Công nghệ 4 "Khu vườn của em"','Nhắc lại kiến thức, sơ đồ tư duy, câu hỏi theo mức, đề ôn cuối HKI · ','cn4/',60],
+  ['2026-11-25','08:45','Giảng dạy','Học liệu số: app ôn tập Công nghệ 6 "Ngôi nhà xanh ven biển"','Song ngữ, đề mẫu cuối HK1 · ','cn6/',60],
+  ['2026-11-25','08:52','Giảng dạy','Học liệu số: app ôn tập Công nghệ 7 "Nông trại xanh của Hà"','Song ngữ, đề mẫu cuối HK1 · ','cn7/',60],
+  ['2026-11-25','09:01','Giảng dạy','Học liệu số: app ôn tập Công nghệ 8 "Xưởng kĩ sư"','Song ngữ, đề mẫu cuối HK1 · ','cn8/',45],
+  ['2026-11-25','13:23','Giảng dạy','Học liệu số: app ôn tập Khoa học 4 "Phòng thí nghiệm nhí"','Song ngữ, đề mẫu cuối HK1 · ','kh4/',60],
+  ['2026-11-25','13:55','Giảng dạy','Chuẩn hoá đề ôn cuối HK1 theo TT27/CV7991 cho các app ôn tập','Nhãn mức, điểm từng câu, tỉ lệ 40/30/30; đề mẫu cuối HK1, song ngữ từ lớp 3 · ','',45],
+  ['2026-11-25','20:55','Giảng dạy','Sổ đánh giá năng lực: quan sát lớp học, minh chứng, giao bài và chấm bài qua app ôn tập','Nhận xét theo TT27/TT22, hồ sơ học sinh, tổng hợp lớp · ','danh-gia-nang-luc/',90],
+  ['2026-11-26','08:20','Dự án','Công cụ AI Weekly Planner: kế hoạch tuần, báo cáo tuần/tháng, lưu Google Drive','Gắn thời khóa biểu và nội dung học tập tuần 16–17 · ','ke-hoach-tuan/',60]]};
+function proj16(inline){
+  if(MODE==='RECOVERY'||!D.hist||D.hist.proj16)return 0;
+  if(!D.tasks.some(t=>t.src===TKB16.src||t.src===ND16.src))return 0;
+  let n=0;
+  PJ16.items.forEach(([date,end,wsName,title,note,path,dur])=>{
+    if(D.tasks.some(t=>t.title===title))return;
+    let ws=D.ws.find(w=>w.name.toLowerCase()===wsName.toLowerCase());if(!ws){ws={id:uid(),name:wsName,col:COLS[D.ws.length%COLS.length]};D.ws.push(ws)}
+    const t={id:uid(),title,wsId:ws.id,mtId:'',date,start:'',dur,deadline:date,priority:'tb',status:'done',note:note+'Minh chứng: '+PJ16.base+path+' · thời lượng ước tính',rolloverCount:0,originalDate:date,originalDeadline:date,src:PJ16.src,completedAt:date+'T'+end+':00',createdAt:new Date().toISOString()};
+    D.tasks.push(t);logE({type:'done',taskId:t.id,title,reason:'Dự án đã làm tuần 16 (đưa vào báo cáo)'});n++});
+  D.hist.proj16=1;
+  if(n)logE({type:'import',src:PJ16.src,reason:`Thêm ${n} dự án đã làm trong tuần 16 vào báo cáo`});
+  if(!inline&&MODE==='USER')persist();
+  return n;
 }
 /* Cô báo 26/11: báo giảng tuần 17 đã xong, chỉ còn báo cáo tuần 16. Chạy một lần trên dữ liệu đã gắn nội dung. */
 function nd16Fix(inline){
@@ -993,6 +1022,7 @@ setInterval(()=>drPull(false),5*60000);
 window.addEventListener('online',()=>{if(DR.dirty)drPush(false)});
 window.__planner={applyND16,get D(){return D},get MODE(){return MODE},get DR(){return DR},drPull,buildPlan,applyPlan,rollTask,report,integrity,setNow(d){NOWD=d}};
 nd16Fix(false);
+proj16(false);
 route();
 if(drOn())setTimeout(()=>drPull(true,true),300);
 }
