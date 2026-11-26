@@ -14,5 +14,6 @@ const ROSTER = [
   { id: 'hs11', name: 'Nguyễn Dương Anh' },
   { id: 'hs12', name: 'Nguyễn Mai An Nhiên' },
   { id: 'hs13', name: 'Đàm Minh Khôi' },
-  { id: 'hs14', name: 'Chu Nguyễn Bảo Châu' }
+  { id: 'hs14', name: 'Chu Nguyễn Bảo Châu' },
+  { id: 'hs15', name: 'Phan Đức Minh' }
 ];
