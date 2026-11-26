@@ -245,7 +245,7 @@ function drApply(j,why){
   if(MODE==='USER')snapshot('Trước khi tải dữ liệu từ Drive');
   const d=j.data;D={tasks:d.tasks||[],ws:d.ws||[],mt:d.mt||[],set:{...defSet(),...(d.set||{})},hist:d.hist&&Array.isArray(d.hist.events)?{weeks:{},...d.hist}:{events:[],weeks:{}}};
   MODE='USER';PROBLEMS=[];DR.rev=j.rev;DR.at=j.at;DR.dirty=0;DR.remote=null;DR.err='';drState='ok';drSave();
-  drSilent=true;persist();drSilent=false;autoWeek();render();toast(why||'Đã tải dữ liệu mới nhất từ Drive');
+  drSilent=true;persist();drSilent=false;autoWeek();if(nd16Fix(true))persist();render();toast(why||'Đã tải dữ liệu mới nhất từ Drive');
 }
 async function drPull(manual,quiet){
   if(!drOn()||drBusy)return;if(!manual&&Date.now()-drLastPull<45000)return;drLastPull=Date.now();
@@ -838,9 +838,9 @@ const ND16={src:'ndht-t16',
    'Công nghệ 4G1':'T5 03/12: Đánh giá cuối học kỳ 1 (Cụm Sinh thái): triển lãm chậu cây, nhật ký khoa học, bài thi năng lực',
    'Khoa học 4G1':'T6 04/12: Dự án 16 Tổng ôn năng lượng và sinh vật (Boardgame khoa học) – Tiết 1 và 2',
    'Science 1G1':'','Công nghệ 6G1':'','Công nghệ 7G1':''},
-  extra:[['Ghi nội dung học tập tuần 17 vào file NỘI DUNG HỌC TẬP HÀNG TUẦN',45,'cao','Còn trống: Science 1G1 (T2, T5), Công nghệ 6G1 (chưa có khối tuần 17), Công nghệ 7G1 (T6 tiết 5–6). Đã có: STEAM 1G1, 2G1, 3G1; Công nghệ 4G1; Khoa học 4G1.'],
-         ['Báo cáo công việc tuần 16',30,'cao','Điền app Báo cáo tuần (tab T16) từ Báo cáo trong app này']]};
-const nd16Done=()=>D.tasks.some(t=>t.src===ND16.src)||(D.hist.events||[]).some(e=>e.type==='import'&&e.src===ND16.src);
+  extra:[['Báo cáo công việc tuần 16',30,'cao','Điền app Báo cáo tuần (tab T16) từ Báo cáo trong app này']]};
+const nd16Done0=()=>D.tasks.some(t=>t.src===ND16.src)||(D.hist.events||[]).some(e=>e.type==='import'&&e.src===ND16.src);
+const nd16Done=()=>nd16Done0();
 function applyND16(){
   if(MODE==='RECOVERY'){toast('Dữ liệu đang cần khôi phục, chưa cập nhật được');return}
   if(nd16Done()){toast('Nội dung tuần 16–17 đã có trong app');return}
@@ -857,12 +857,27 @@ function applyND16(){
     logE({type:'rollover',taskId:t.id,title:t.title,n:t.rolloverCount,from:fr,to:{date:h.to,start:h.start},reason:h.reason});n++});
   mine.forEach(t=>{const m=t.title.match(/^(Soạn giáo án|Chuẩn bị đồ dùng, học liệu|Nhận xét, đánh giá học sinh) (.+)$/);if(!m)return;const c=m[2];
     if(m[1]==='Nhận xét, đánh giá học sinh'){const L=ND16.teach.filter(x=>x[1]===c);t.note=L.length?'Tuần 16 · '+L[0][4]:c==='STEAM 3G1'?'Tuần 16 nghỉ lễ, không có tiết để đánh giá':t.note;n++;return}
-    const nx=ND16.next[c];t.note=nx?`Cho tuần 17 · ${nx}`:'Cho tuần 17 · file chưa có nội dung tuần 17: ghi vào file trước khi soạn';if(m[1]==='Soạn giáo án')t.title='Soạn giáo án tuần 17 '+c;else t.title='Chuẩn bị đồ dùng, học liệu tuần 17 '+c;n++});
+    const nx=ND16.next[c];t.note=`Cho tuần 17 · ${nx||'theo báo giảng tuần 17'}`;if(m[1]==='Soạn giáo án')t.title='Soạn giáo án tuần 17 '+c;else t.title='Chuẩn bị đồ dùng, học liệu tuần 17 '+c;n++});
   const b=board(D.tasks),dates=weekDates(wk),from=today()>wk?today():wk;let add=0;
   ND16.extra.forEach(([title,dur,pr,note])=>{if(D.tasks.some(t=>t.title===title))return;const t={id:uid(),title,wsId:(D.ws.find(w=>/giảng dạy/i.test(w.name))||D.ws[0]||{}).id||'',mtId:'',date:'',start:'',dur,deadline:fri,priority:pr,status:'todo',note,rolloverCount:0,originalDate:'',originalDeadline:fri,src:ND16.src,createdAt:now};
     const s=findSlot(b,dur,dates,from,0,fri);if(s){occupy(b,{...s,m:dur});t.date=t.originalDate=s.date;t.start=s.start}D.tasks.push(t);add++});
   logE({type:'import',src:ND16.src,reason:`Gắn nội dung học tập tuần 16–17: cập nhật ${n} việc, thêm ${add} việc`});
+  nd16Fix(true);
   wkView=wk;commit(`Đã gắn nội dung bài học vào ${n} việc và thêm ${add} việc`);
+}
+/* Cô báo 26/11: báo giảng tuần 17 đã xong, chỉ còn báo cáo tuần 16. Chạy một lần trên dữ liệu đã gắn nội dung. */
+function nd16Fix(inline){
+  if(MODE==='RECOVERY'||!D.hist||D.hist.nd16b)return 0;
+  if(!D.tasks.some(t=>t.src===ND16.src||t.src===TKB16.src))return 0;
+  let n=0;const now=new Date().toISOString();
+  D.tasks=D.tasks.filter(t=>{if(t.src===ND16.src&&/^Ghi nội dung học tập tuần 17/.test(t.title)&&t.status!=='done'){logE({type:'remove',taskId:t.id,title:t.title,reason:'Báo giảng tuần 17 cô đã làm xong'});n++;return false}return true});
+  D.tasks.forEach(t=>{
+    if(/file chưa có nội dung tuần 17/.test(t.note||'')){t.note='Cho tuần 17 · theo báo giảng tuần 17';n++}
+    if(t.src===TKB16.src&&/^Báo giảng, sổ đầu bài tuần 16/.test(t.title)&&t.status!=='done'){t.status='done';t.completedAt=now;t.note='Đã làm báo giảng tuần 17';logE({type:'done',taskId:t.id,title:t.title,reason:'Cô báo đã xong báo giảng tuần 17'});n++}
+  });
+  D.hist.nd16b=1;
+  if(!inline&&MODE==='USER')persist();
+  return n;
 }
 function importData(txt){
   let x;try{x=JSON.parse(txt)}catch(e){toast('File không đúng định dạng JSON');return}
@@ -977,6 +992,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setInterval(()=>drPull(false),5*60000);
 window.addEventListener('online',()=>{if(DR.dirty)drPush(false)});
 window.__planner={applyND16,get D(){return D},get MODE(){return MODE},get DR(){return DR},drPull,buildPlan,applyPlan,rollTask,report,integrity,setNow(d){NOWD=d}};
+nd16Fix(false);
 route();
 if(drOn())setTimeout(()=>drPull(true,true),300);
 }
