@@ -347,14 +347,14 @@ function buildPlan(wk,o){
   if(o.fix){
     const cf=conflicts(all.filter(t=>!touched.has(t.id)&&t.date>=wk&&t.date<=dates[6]));
     all.forEach(t=>{
-      if(touched.has(t.id)||t.status==='done')return;
+      if(touched.has(t.id)||t.status==='done'||t.fixed)return;
       if(isCur&&validD(t.date)&&isOver(t)&&t.date<=today()&&!(t.deadline<today()&&t.date>today())){movers.push({t,why:'Quá hạn, chưa hoàn thành',ro:1});touched.add(t.id);return}
       if(isUnsched(t)&&(!validD(t.date)||(t.date>=fromDate&&t.date<=dates[6]))){movers.push({t,why:'Chưa được xếp lịch',pref:validD(t.date)?t.date:''});touched.add(t.id)}
     });
     // conflicts: keep higher priority / earlier created, move the other
     const byD={};all.filter(t=>cf.has(t.id)&&!touched.has(t.id)).forEach(t=>(byD[t.date]=byD[t.date]||[]).push(t));
     Object.values(byD).forEach(a=>{a.sort((x,y)=>(x.status==='done'?-1:0)-(y.status==='done'?-1:0)||toMin(x.start)-toMin(y.start));const kept=[];
-      a.forEach(t=>{const clash=kept.some(k=>toMin(t.start)<endM(k)&&toMin(k.start)<endM(t));if(clash&&t.status!=='done'&&!(t.mtId&&D.mt.find(m=>m.id===t.mtId&&m.time))){movers.push({t,why:'Trùng giờ với việc khác'});touched.add(t.id)}else kept.push(t)})});
+      a.forEach(t=>{const clash=kept.some(k=>toMin(t.start)<endM(k)&&toMin(k.start)<endM(t));if(clash&&t.status!=='done'&&!t.fixed&&!(t.mtId&&D.mt.find(m=>m.id===t.mtId&&m.time))){movers.push({t,why:'Trùng giờ với việc khác'});touched.add(t.id)}else kept.push(t)})});
   }
   const b=board(all.filter(t=>!touched.has(t.id)));
   movers.sort((x,y)=>prioCmp(x.t,y.t)).forEach(mv=>{
@@ -498,6 +498,8 @@ V['ke-hoach-tuan']=()=>{
 V['luong-cong-viec']=()=>{
   const wk=curWk(),a=weekTasks(wk),tot=a.reduce((s,t)=>s+(+t.dur||0),0)||1;
   return`<h2>Luồng công việc</h2><p class="lead">Phân nhóm công việc theo lĩnh vực. Số liệu tính cho ${esc(wkTitle(wk))}.</p>
+  <div class="panel" style="border-left-color:var(--hi);margin-bottom:16px"><h3>Thời khóa biểu tuần 16 (23/11 – 27/11/2026)</h3><p class="note">18 tiết dạy (11 buổi) giờ cố định, cùng việc soạn 8 giáo án, chuẩn bị đồ dùng, nhận xét học sinh cho 8 môn/lớp và báo giảng. Tất cả vào luồng Giảng dạy, dữ liệu đang có được giữ nguyên.</p>
+  <div class="row" style="margin-top:8px">${tkb16Done()?'<span class="note"><b>Đã nhập vào app.</b> Xem ở Kế hoạch tuần, tuần 23/11.</span>':'<button data-act="tkb16">Nhập thời khóa biểu tuần 16</button>'}</div></div>
   ${D.ws.map(w=>{const x=stats(a.filter(t=>t.wsId===w.id)),all=D.tasks.filter(t=>t.wsId===w.id).length;return`<div class="ws"><span class="dot" style="background:${esc(w.col)};width:18px;height:18px"></span><div><input data-wsname="${esc(w.id)}" value="${esc(w.name)}" aria-label="Tên luồng" style="font-weight:700;margin-bottom:6px"><div class="sw">${COLS.map(c=>`<button type="button" data-wscol="${esc(w.id)}" data-c="${c}" class="${c===w.col?'on':''}" style="background:${c}" aria-label="Chọn màu"></button>`).join('')}</div>
     <div class="note" style="margin-top:6px">${all} nhiệm vụ tổng · tuần này ${x.d}/${x.t} xong (${x.p}%) · ${hrs(x.m)}, chiếm ${Math.round(x.m/tot*100)}% khối lượng tuần · ${D.mt.filter(m=>m.wsId===w.id).length} nhiệm vụ chính</div>
     <div class="meter" style="margin-top:6px"><i style="width:${x.p}%;background:${esc(w.col)}"></i></div></div><button class="link" data-wsdel="${esc(w.id)}">Xoá</button></div>`}).join('')}
@@ -693,6 +695,39 @@ function setDone(t,on){
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 function exportJSON(){return JSON.stringify({app:'ai-weekly-planner',v:1,at:new Date().toISOString(),data:{tasks:D.tasks,ws:D.ws,mt:D.mt,set:D.set,hist:D.hist}},null,1)}
+/* ================= thời khóa biểu tuần 16 ================= */
+const TKB16={wk:'2026-11-23',src:'tkb-t16',
+  // [thứ (0 = Thứ Hai), bắt đầu, kết thúc, môn – lớp, phòng, tiết]
+  lessons:[[0,'13:10','14:19','STEAM 2G1','113','6–7'],[0,'14:37','15:46','Science 1G1','112','8–9'],
+    [1,'13:10','14:19','STEAM 3G1','114','6–7'],[2,'09:56','10:28','STEAM 1G1','112','4'],
+    [3,'09:19','10:28','Science 1G1','112','3–4'],[3,'13:47','14:19','Công nghệ 4G1','','7'],
+    [4,'07:55','09:04','STEAM 1G1','112','1–2'],[4,'09:22','10:39','Công nghệ 7G1','214','3–4'],
+    [4,'10:46','11:21','Công nghệ 6G1','116','5'],[4,'13:00','13:35','Công nghệ 6G1','116','6'],
+    [4,'13:47','15:09','Khoa học 4G1','115','7–8']],
+  classes:['STEAM 1G1','STEAM 2G1','STEAM 3G1','Science 1G1','Công nghệ 4G1','Khoa học 4G1','Công nghệ 6G1','Công nghệ 7G1'],
+  // [tên việc, phút mỗi môn/lớp, ưu tiên]
+  prep:[['Soạn giáo án',60,'cao'],['Chuẩn bị đồ dùng, học liệu',20,'tb'],['Nhận xét, đánh giá học sinh',15,'tb']]};
+const tkb16Done=()=>D.tasks.some(t=>t.src===TKB16.src);
+function importTKB16(){
+  if(MODE==='RECOVERY'){toast('Dữ liệu đang cần khôi phục, chưa nhập được');return}
+  if(tkb16Done()){toast('Thời khóa biểu tuần 16 đã có trong app');return}
+  if(MODE==='SAMPLE')D={tasks:[],ws:[{id:uid(),name:'Giảng dạy',col:COLS[0]},{id:uid(),name:'Hành chính',col:COLS[2]},{id:uid(),name:'Dự án',col:COLS[3]},{id:uid(),name:'Phát triển cá nhân',col:COLS[1]}],mt:[],set:defSet(),hist:{events:[],weeks:{[curWk()]:{at:new Date().toISOString()}}}};
+  else snapshot('Trước khi nhập TKB tuần 16');
+  let ws=D.ws.find(w=>/giảng dạy/i.test(w.name));
+  if(!ws){ws={id:uid(),name:'Giảng dạy',col:COLS[0]};D.ws.unshift(ws)}
+  const wk=TKB16.wk,fri=addD(wk,4),sun=addD(wk,6),now=new Date().toISOString();
+  const T=o=>({id:uid(),wsId:ws.id,mtId:'',start:'',deadline:sun,priority:'tb',status:'todo',note:'',rolloverCount:0,originalDate:'',originalDeadline:sun,src:TKB16.src,createdAt:now,...o});
+  TKB16.lessons.forEach(([d,a,z,sub,room,ti])=>{const date=addD(wk,d);
+    D.tasks.push(T({title:`Dạy ${sub}${room?' – P'+room:''} (tiết ${ti})`,date,start:a,dur:toMin(z)-toMin(a),deadline:date,originalDate:date,originalDeadline:date,priority:'cao',fixed:1,note:`Thời khóa biểu tuần 16 · lớp ${sub.split(' ').pop()} Chẵn${room?'':' · phòng chưa rõ'}`}))});
+  const prep=[];
+  TKB16.prep.forEach(([nm,m,pr])=>TKB16.classes.forEach(c=>prep.push(T({title:`${nm} ${c}`,date:'',dur:m,priority:pr,note:'Chuẩn bị giảng dạy tuần 16'}))));
+  prep.push(T({title:'Báo giảng, sổ đầu bài tuần 16',date:'',dur:30,priority:'tb',note:'Ưu tiên Thứ Sáu',pref:fri}));
+  const b=board(D.tasks),dates=weekDates(wk),from=today()>wk?today():wk;let placed=0;
+  prep.forEach(t=>{const pref=t.pref;delete t.pref;const s=findSlot(b,t.dur,dates,from,0,pref||'');if(s){occupy(b,{...s,m:t.dur});t.date=t.originalDate=s.date;t.start=s.start;placed++}D.tasks.push(t)});
+  logE({type:'import',reason:`Nhập TKB tuần 16: ${TKB16.lessons.length} buổi dạy, ${prep.length} việc chuẩn bị`});
+  wkView=wk;
+  commit(`Đã nhập ${TKB16.lessons.length} buổi dạy và ${prep.length} việc chuẩn bị`+(placed<prep.length?` (${prep.length-placed} việc chưa có giờ trống)`:''));
+}
 function importData(txt){
   let x;try{x=JSON.parse(txt)}catch(e){toast('File không đúng định dạng JSON');return}
   const d=x&&x.data?x.data:x;
@@ -768,6 +803,7 @@ document.addEventListener('click',e=>{
     case'export':download(`ai-weekly-planner-${today()}.json`,exportJSON(),'application/json');break;
     case'copyjson':navigator.clipboard.writeText(exportJSON()).then(()=>toast('Đã copy bản sao lưu')).catch(()=>{$('impTxt').value=exportJSON();toast('Không copy được, nội dung đã đưa vào ô bên dưới')});break;
     case'importtxt':importData($('impTxt').value);break;
+    case'tkb16':importTKB16();break;
     case'snap':if(MODE==='SAMPLE'){toast('Đang ở dữ liệu mẫu, chưa có gì để sao lưu');return}snapshot('Tạo tay');render();toast('Đã tạo bản sao lưu');break;
     case'check':integrity();break;
     case'migrate':migrateOld();break;
