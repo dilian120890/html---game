@@ -204,14 +204,89 @@ function load(){
 }
 function persist(){
   if(MODE==='RECOVERY'){toast('Dữ liệu đang cần khôi phục, chưa lưu thay đổi');return false}
-  if(MODE==='SAMPLE'){MODE='USER';try{LS.set(K.init,new Date().toISOString())}catch(e){}}
+  if(MODE==='SAMPLE')MODE='USER';
+  if(!LS.get(K.init)){try{LS.set(K.init,new Date().toISOString())}catch(e){}}
   try{
     LS.set(K.tasks,JSON.stringify(D.tasks));LS.set(K.ws,JSON.stringify(D.ws));LS.set(K.mt,JSON.stringify(D.mt));LS.set(K.set,JSON.stringify(D.set));LS.set(K.hist,JSON.stringify(D.hist));
     const day=today();if(D.hist.lastAuto!==day){D.hist.lastAuto=day;LS.set(K.hist,JSON.stringify(D.hist));snapshot('Tự động hằng ngày')}
+    if(!drSilent)drQueue();
     return true;
   }catch(e){toast('Không lưu được: bộ nhớ trình duyệt đầy hoặc bị chặn');return false}
 }
 function backups(){const r=readKey(K.bk,Array.isArray);return r.v||[]}
+
+/* ================= Google Drive sync (Apps Script web app of the user) ================= */
+const DK='ai_weekly_planner_drive_v1';
+let DR={};try{DR=JSON.parse(LS.get(DK))||{}}catch(e){DR={}}
+if(!DR.device)DR.device=(/iPhone|iPad/.test(navigator.userAgent)?'iPhone/iPad':/Android/.test(navigator.userAgent)?'Android':/Mac/.test(navigator.userAgent)?'Mac':/Win/.test(navigator.userAgent)?'Windows':'Máy')+' '+Math.random().toString(36).slice(2,6);
+let drSilent=false,drBusy=false,drState=DR.url?'':'off',drTimer=null,drLastPull=0;
+const drSave=()=>{try{LS.set(DK,JSON.stringify(DR))}catch(e){}};
+const drOn=()=>!!(DR.url&&DR.key&&DR.on);
+const drUrlOk=u=>/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(u||'');
+const drPayload=()=>({tasks:D.tasks,ws:D.ws,mt:D.mt,set:D.set,hist:D.hist});
+async function drCall(body,url,key){
+  const r=await fetch(url||DR.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:key||DR.key,...body})});
+  if(!r.ok)throw new Error('http '+r.status);return r.json();
+}
+function drQueue(){if(!drOn()||MODE!=='USER')return;DR.dirty=1;drSave();clearTimeout(drTimer);drTimer=setTimeout(()=>drPush(false),2000);drState=drState==='conflict'?'conflict':'wait';drUi()}
+async function drPush(force){
+  if(!drOn()||MODE!=='USER')return;
+  if(drBusy){clearTimeout(drTimer);drTimer=setTimeout(()=>drPush(force),1500);return}
+  if(drState==='conflict'&&!force)return;
+  drBusy=true;drState='sync';drUi();
+  try{const j=await drCall({action:'save',baseRev:DR.rev||0,force:!!force,device:DR.device,data:drPayload()});
+    if(j.ok){DR.rev=j.rev;DR.at=j.at;DR.dirty=0;DR.err='';drState='ok'}
+    else if(j.err==='conflict'){DR.remote={rev:j.rev,at:j.at,device:j.device};drState='conflict'}
+    else{DR.err=j.err==='key'?'Sai mã bí mật':j.err==='nokey'?'Máy chủ chưa chạy hàm caiDat':'Máy chủ báo lỗi';drState='err'}
+  }catch(e){DR.err='Không kết nối được Drive (mất mạng?). Dữ liệu vẫn lưu trên máy, sẽ gửi lại sau.';drState='err'}
+  drBusy=false;drSave();drUi();if(drState==='conflict')render();
+}
+function drApply(j,why){
+  if(MODE==='USER')snapshot('Trước khi tải dữ liệu từ Drive');
+  const d=j.data;D={tasks:d.tasks||[],ws:d.ws||[],mt:d.mt||[],set:{...defSet(),...(d.set||{})},hist:d.hist&&Array.isArray(d.hist.events)?{weeks:{},...d.hist}:{events:[],weeks:{}}};
+  MODE='USER';PROBLEMS=[];DR.rev=j.rev;DR.at=j.at;DR.dirty=0;DR.remote=null;DR.err='';drState='ok';drSave();
+  drSilent=true;persist();drSilent=false;autoWeek();render();toast(why||'Đã tải dữ liệu mới nhất từ Drive');
+}
+async function drPull(manual,quiet){
+  if(!drOn()||drBusy)return;if(!manual&&Date.now()-drLastPull<45000)return;drLastPull=Date.now();
+  drBusy=true;drState='sync';drUi();let j;
+  try{j=await drCall({action:'load'})}catch(e){drBusy=false;DR.err='Không kết nối được Drive (mất mạng?).';drState='err';drSave();drUi();return}
+  drBusy=false;
+  if(!j.ok){DR.err=j.err==='key'?'Sai mã bí mật':'Máy chủ báo lỗi';drState='err';drSave();drUi();return}
+  if(!j.data){if(MODE==='USER')drPush(true);else{drState='ok';drUi()}return}
+  if((j.rev||0)>(DR.rev||0)){
+    if(MODE==='USER'&&DR.dirty&&DR.rev){DR.remote={rev:j.rev,at:j.at,device:j.device};drState='conflict';drSave();render();return}
+    if(MODE==='RECOVERY'){DR.remote={rev:j.rev,at:j.at,device:j.device};drState='ok';drSave();render();return}
+    drApply(j);return;
+  }
+  if(DR.dirty&&MODE==='USER'){drPush(false);return}
+  drState='ok';DR.err='';drSave();drUi();if(manual&&!quiet)toast('Dữ liệu trên máy đã khớp với Drive');
+}
+async function drConnect(){
+  const url=($('drUrl').value||'').trim(),key=($('drKey').value||'').trim();
+  if(!drUrlOk(url)){toast('Địa chỉ phải bắt đầu bằng https://script.google.com/ và kết thúc bằng /exec');return}
+  if(!key){toast('Nhập mã bí mật');return}
+  $('drMsg').textContent='Đang kết nối…';let j;
+  try{j=await drCall({action:'load'},url,key)}catch(e){$('drMsg').textContent='Không kết nối được. Kiểm tra địa chỉ, và khi triển khai đã chọn "Bất kỳ ai" chưa.';return}
+  if(!j.ok){$('drMsg').textContent=j.err==='key'?'Sai mã bí mật.':j.err==='nokey'?'Máy chủ chưa có mã: hãy chạy hàm caiDat trong Apps Script.':'Máy chủ báo lỗi.';return}
+  DR.url=url;DR.key=key;DR.on=1;DR.err='';
+  if(!j.data){DR.rev=0;drSave();if(MODE==='SAMPLE'){drState='ok';render();toast('Đã kết nối. Drive đang trống; dữ liệu sẽ lưu lên khi bạn bắt đầu dùng.');return}
+    drSave();await drPush(true);render();toast('Đã kết nối và lưu dữ liệu lên Drive');return}
+  if(MODE!=='USER'||!D.tasks.length){drApply(j,'Đã kết nối và tải dữ liệu từ Drive');return}
+  DR.rev=0;DR.remote={rev:j.rev,at:j.at,device:j.device,n:(j.data.tasks||[]).length};drState='conflict';DR.dirty=1;drSave();render();
+  toast('Trên Drive đã có dữ liệu. Chọn bản muốn dùng.');
+  drPending=j;
+}
+let drPending=null;
+async function drUseRemote(){let j=drPending;drPending=null;if(!j){try{j=await drCall({action:'load'})}catch(e){toast('Không kết nối được Drive');return}}if(j&&j.ok&&j.data)drApply(j,'Đã dùng bản trên Drive (bản máy này đã sao lưu trong Cài đặt)');}
+function drUi(){
+  const el=$('drBadge');const t=drText();if(el)el.textContent=t;const m=$('drState');if(m)m.textContent=t;
+}
+function drText(){
+  if(!DR.url||!DR.on)return'Google Drive: chưa kết nối';
+  const at=DR.at?new Date(DR.at).toLocaleString('vi-VN',{dateStyle:'short',timeStyle:'short'}):'';
+  return{sync:'Google Drive: đang đồng bộ…',wait:'Google Drive: sắp lưu thay đổi…',ok:'Google Drive: đã lưu'+(at?' lúc '+at:''),err:'Google Drive: lỗi · '+(DR.err||''),conflict:'Google Drive: có bản khác, cần chọn',off:'Google Drive: chưa kết nối'}[drState]||('Google Drive: đã kết nối'+(at?' · lần lưu cuối '+at:''));
+}
 function snapshot(reason){
   if(MODE==='SAMPLE')return;
   let list=backups();list.unshift({id:uid(),at:new Date().toISOString(),reason,n:D.tasks.length,data:{tasks:D.tasks,ws:D.ws,mt:D.mt,set:D.set,hist:{...D.hist,events:D.hist.events.slice(-1500)}}});
@@ -450,7 +525,8 @@ const timeRange=t=>validT(t.start)?`${esc(t.start)}–${hm(endM(t))}`:'Chưa x�
 function itemRow(t,cf,showDate){const w=wsOf(t.wsId);return`<li class="it ${t.status==='done'?'done':''}"><div class="tm">${showDate?esc(dayLbl(t.date))+'<br>':''}${timeRange(t)}<small>${+t.dur||0} phút</small></div><input type="checkbox" data-done="${esc(t.id)}" ${t.status==='done'?'checked':''} aria-label="Hoàn thành"><div><div class="ti" data-edit="${esc(t.id)}"><span class="dot" style="background:${esc(w.col)};margin-right:6px"></span>${esc(t.title)}</div><div class="st">${esc(t.note||w.name)} ${tags(t,cf)}</div></div><div class="act row">${t.status!=='done'?`<select data-status="${esc(t.id)}" aria-label="Trạng thái" style="min-height:36px;width:auto;font-size:14px;padding:4px 8px">${Object.entries(ST).filter(([k])=>k!=='done').map(([k,v])=>`<option value="${k}" ${t.status===k?'selected':''}>${v}</option>`).join('')}</select><button class="link" data-roll="${esc(t.id)}">Chuyển tiếp</button>`:''}</div></li>`}
 function setBanners(){
   const out=[];
-  if(MODE==='RECOVERY'){const bk=backups();out.push(`<div class="banner bad"><p><b>Cảnh báo dữ liệu:</b> ${PROBLEMS.map(p=>esc(p.k)+' '+p.why).join(', ')}. App không tự tạo lại dữ liệu để tránh ghi đè. ${bk.length?'Có '+bk.length+' bản sao lưu trên máy.':'Không có bản sao lưu nào.'}</p>${bk.length?`<button data-restore="${esc(bk[0].id)}">Khôi phục bản ${esc(new Date(bk[0].at).toLocaleString('vi-VN'))}</button>`:''}<button class="ghost" data-act="accept-recovery">Tiếp tục với dữ liệu còn lại</button></div>`)}
+  if(MODE==='RECOVERY'){const bk=backups();out.push(`<div class="banner bad"><p><b>Cảnh báo dữ liệu:</b> ${PROBLEMS.map(p=>esc(p.k)+' '+p.why).join(', ')}. App không tự tạo lại dữ liệu để tránh ghi đè. ${bk.length?'Có '+bk.length+' bản sao lưu trên máy.':'Không có bản sao lưu nào.'}</p>${bk.length?`<button data-restore="${esc(bk[0].id)}">Khôi phục bản ${esc(new Date(bk[0].at).toLocaleString('vi-VN'))}</button>`:''}${drOn()?'<button data-act="dr-remote">Tải bản trên Google Drive</button>':''}<button class="ghost" data-act="accept-recovery">Tiếp tục với dữ liệu còn lại</button></div>`)}
+  if(drState==='conflict'&&DR.remote)out.push(`<div class="banner bad"><p><b>Google Drive có bản khác với máy này</b>${DR.remote.at?' (lưu lúc '+esc(new Date(DR.remote.at).toLocaleString('vi-VN'))+(DR.remote.device?' từ '+esc(DR.remote.device):'')+')':''}${DR.remote.n!=null?', '+DR.remote.n+' nhiệm vụ; máy này có '+D.tasks.length:''}. Chọn bản muốn giữ. Bản bị thay vẫn còn trong bản sao lưu.</p><button data-act="dr-remote">Dùng bản trên Drive</button><button class="ghost" data-act="dr-force">Ghi bản máy này lên Drive</button></div>`);
   if(MODE==='SAMPLE')out.push(`<div class="banner calm"><p><b>Đang xem dữ liệu mẫu</b>, chưa lưu vào máy. Khi bạn sửa bất kỳ điều gì, app chuyển sang dữ liệu của bạn và bắt đầu lưu.</p><button data-act="keep-sample">Giữ mẫu làm dữ liệu của tôi</button><button class="ghost" data-act="start-empty">Bắt đầu với dữ liệu trống</button></div>`);
   if(notice)out.push(`<div class="banner ${notice.cls||''}"><p>${esc(notice.txt)}</p><button class="ghost sm" data-act="dismiss">Đã hiểu</button></div>`);
   if(MODE!=='RECOVERY'){
@@ -462,7 +538,7 @@ function setBanners(){
   $('banners').innerHTML=out.join('');
   const od=D.tasks.filter(isOver).length;
   document.querySelectorAll('#nav a').forEach(a=>{a.classList.toggle('on',a.dataset.v===view);const old=a.querySelector('b');if(old)old.remove();if(a.dataset.v==='tat-ca'&&od)a.insertAdjacentHTML('beforeend',`<b>${od}</b>`)});
-  $('modeBox').innerHTML=`Chế độ dữ liệu: <b>${MODE==='SAMPLE'?'SAMPLE (mẫu, chỉ trong RAM)':MODE==='USER'?'USER (lưu trên máy này)':'RECOVERY (cần khôi phục)'}</b>`;
+  $('modeBox').innerHTML=`Chế độ dữ liệu: <b>${MODE==='SAMPLE'?'SAMPLE (mẫu, chỉ trong RAM)':MODE==='USER'?'USER (lưu trên máy này)':'RECOVERY (cần khôi phục)'}</b><div id="drBadge" style="margin-top:6px">${esc(drText())}</div>`;
 }
 const V={};
 V['tong-quan']=()=>{
@@ -581,6 +657,17 @@ V['cai-dat']=()=>{
    <label class="chip w2"><input type="checkbox" id="sNext" ${c.nextWeek?'checked':''}>Re-plan được chuyển việc sang tuần sau khi hết chỗ</label>
    <label class="chip w4"><input type="checkbox" id="sApply" ${c.autoApply?'checked':''}>Tự áp dụng điều chỉnh ngay khi sửa nhiệm vụ chính (không xem trước)</label>
   </div></div>
+  <div class="panel" style="border-left-color:var(--ok)" id="drive"><h3>Lưu vào Google Drive</h3>
+   <p class="note" id="drState">${esc(drText())}</p>
+   <p class="note">Dữ liệu được lưu thành tệp trong thư mục <b>AI Weekly Planner</b> trên Google Drive của bạn, qua một máy chủ Apps Script nhỏ do chính bạn tạo (miễn phí). Mở app trên máy khác, nhập cùng địa chỉ và mã là thấy dữ liệu. Mỗi ngày Drive giữ thêm một bản sao lưu, 30 ngày gần nhất.</p>
+   <details ${DR.on?'':'open'}><summary class="note" style="cursor:pointer;font-weight:600">Cách cài đặt (làm một lần, khoảng 5 phút)</summary><ol class="note" style="line-height:1.7">
+    <li>Bấm <b>Copy mã Apps Script</b> bên dưới. Mở <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> → Dự án mới, xoá mã có sẵn, dán vào, bấm Lưu.</li>
+    <li>Chọn hàm <b>caiDat</b> trên thanh công cụ, bấm <b>Chạy</b>, cho phép quyền Google Drive. Mở <b>Nhật ký thực thi</b> để xem <b>mã bí mật</b> (8 ký tự).</li>
+    <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b> → loại <b>Ứng dụng web</b>. Thực thi với tư cách: <b>Tôi</b>. Người có quyền truy cập: <b>Bất kỳ ai</b>. Bấm Triển khai và chép địa chỉ kết thúc bằng <b>/exec</b>.</li>
+    <li>Dán địa chỉ và mã bí mật vào hai ô dưới rồi bấm <b>Kết nối</b>. Trên máy khác, chỉ cần làm bước này.</li></ol>
+    <div class="row"><button class="sm ghost" data-act="dr-code">Copy mã Apps Script</button><a href="https://github.com/dilian120890/html---game/blob/main/ke-hoach-tuan/drive-sync/Code.gs" target="_blank" rel="noopener">Xem mã trên GitHub</a></div></details>
+   <div class="form" style="margin-top:12px"><label class="w2">Địa chỉ ứng dụng web (…/exec)<input id="drUrl" value="${esc(DR.url||'')}" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label><label>Mã bí mật<input id="drKey" value="${esc(DR.key||'')}" autocomplete="off"></label><label>Tên máy này<input id="drDev" value="${esc(DR.device)}"></label></div>
+   <div class="row" style="margin-top:10px"><button class="sm" data-act="dr-connect">${DR.on?'Kết nối lại':'Kết nối'}</button>${DR.on?'<button class="sm ghost" data-act="dr-sync">Đồng bộ ngay</button><button class="sm ghost" data-act="dr-off">Ngắt kết nối</button>':''}<span class="note" id="drMsg"></span></div></div>
   <div class="panel"><h3>Lưu trữ trên máy này</h3><p class="note">Chế độ: <b>${MODE}</b> · ${D.tasks.length} nhiệm vụ · khoảng ${Math.round(size/1024)} KB. Dữ liệu chỉ nằm trong trình duyệt này, không gửi lên máy chủ nào.</p>
    <div class="scroll"><table class="tbl"><thead><tr><th>Khóa lưu trữ</th><th>Kích thước</th></tr></thead><tbody>${Object.values(K).map(k=>`<tr><td><code>${esc(k)}</code></td><td class="n">${LS.get(k)==null?'chưa có':Math.round((LS.get(k)||'').length/1024*10)/10+' KB'}</td></tr>`).join('')}</tbody></table></div>
    <div class="row" style="margin-top:12px"><button class="sm" data-act="export">Tải bản sao lưu (.json)</button><button class="sm ghost" data-act="copyjson">Copy bản sao lưu</button><label class="sm ghost" style="display:inline-flex"><input type="file" id="impFile" accept=".json,application/json" class="hide"><span class="chip" style="cursor:pointer">Chọn file để nhập…</span></label><button class="sm ghost" data-act="snap">Tạo bản sao lưu ngay</button><button class="sm ghost" data-act="check">Kiểm tra toàn vẹn dữ liệu</button></div>
@@ -796,6 +883,12 @@ document.addEventListener('click',e=>{
     case'dismiss':notice=null;render();break;
     case'keep-sample':commit('Đã lưu dữ liệu mẫu làm dữ liệu của bạn');break;
     case'start-empty':D={tasks:[],ws:[{id:uid(),name:'Giảng dạy',col:COLS[0]},{id:uid(),name:'Hành chính',col:COLS[2]},{id:uid(),name:'Dự án',col:COLS[3]},{id:uid(),name:'Phát triển cá nhân',col:COLS[1]}],mt:[],set:defSet(),hist:{events:[],weeks:{[curWk()]:{at:new Date().toISOString()}}}};commit('Đã bắt đầu với dữ liệu trống. Thêm nhiệm vụ chính để app tự lập kế hoạch.');location.hash='nhiem-vu-chinh';break;
+    case'dr-connect':drConnect();break;
+    case'dr-sync':drPull(true);break;
+    case'dr-off':if(!confirmTwice('droff'))return;DR.on=0;drState='off';drSave();render();toast('Đã ngắt kết nối. Dữ liệu trên Drive vẫn giữ nguyên.');break;
+    case'dr-remote':drUseRemote();break;
+    case'dr-force':if(MODE==='RECOVERY'){toast('Dữ liệu máy này đang hỏng, hãy dùng bản trên Drive');return}DR.remote=null;drState='';drPending=null;drPush(true).then(()=>{render();if(drState==='ok')toast('Đã ghi bản máy này lên Drive')});break;
+    case'dr-code':fetch('drive-sync/Code.gs').then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>navigator.clipboard.writeText(t)).then(()=>toast('Đã copy mã Apps Script')).catch(()=>{toast('Không copy được, mở "Xem mã trên GitHub" để chép');});break;
     case'accept-recovery':snapshot('Trước khi tiếp tục với dữ liệu còn lại');MODE='USER';PROBLEMS=[];commit('Đã tiếp tục và lưu dữ liệu hiện có');break;
     case'addws':{const n=$('newWs').value.trim();if(!n){$('newWs').focus();return}D.ws.push({id:uid(),name:n,col:COLS[D.ws.length%COLS.length]});commit('Đã thêm luồng');break}
     case'newmt':mtDlg({id:uid(),title:'',wsId:D.ws[0]?.id||'',priority:'tb',deadline:'',desc:'',mode:'w',h:1,n:1,per:'',day:-1,time:'',steps:'',createdAt:new Date().toISOString()},true);break;
@@ -818,6 +911,7 @@ document.addEventListener('change',e=>{
   if(d.wsname){const w=D.ws.find(x=>x.id===d.wsname);if(w){w.name=el.value.trim()||w.name;commit()}return}
   if(el.id==='fq'||el.id==='fst'||el.id==='fws'||el.id==='fpr'||el.id==='fod'){tq={q:$('fq').value,st:$('fst').value,ws:$('fws').value,pr:$('fpr').value,od:$('fod').value};render();return}
   if(el.id==='rMonth'){rMonth=el.value||rMonth;render();return}
+  if(el.id==='drDev'){DR.device=el.value.trim().slice(0,40)||DR.device;drSave();return}
   if(el.id==='impFile'){const f=el.files&&el.files[0];if(f)f.text().then(importData);return}
   const c=D.set;let k=1;
   if(el.id==='sName')c.name=el.value;else if(el.id==='sW1')c.w1=el.value||c.w1;else if(el.id==='sMax')c.max=+el.value;else if(el.id==='sAuto')c.autoWeek=el.checked?1:0;else if(el.id==='sNext')c.nextWeek=el.checked?1:0;else if(el.id==='sApply')c.autoApply=el.checked?1:0;
@@ -828,8 +922,13 @@ let qT;document.addEventListener('input',e=>{if(e.target.id==='fq'){clearTimeout
 window.addEventListener('hashchange',route);
 window.addEventListener('storage',e=>{if(Object.values(K).includes(e.key)){load();render();toast('Dữ liệu vừa được cập nhật ở tab khác')}});
 setInterval(()=>{const d=today();NOWD=new Date();if(today()!==d){autoWeek();render()}},60000);
-window.__planner={get D(){return D},get MODE(){return MODE},buildPlan,applyPlan,rollTask,report,integrity,setNow(d){NOWD=d}};
+window.addEventListener('focus',()=>drPull(false));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')drPull(false)});
+setInterval(()=>drPull(false),5*60000);
+window.addEventListener('online',()=>{if(DR.dirty)drPush(false)});
+window.__planner={get D(){return D},get MODE(){return MODE},get DR(){return DR},drPull,buildPlan,applyPlan,rollTask,report,integrity,setNow(d){NOWD=d}};
 route();
+if(drOn())setTimeout(()=>drPull(true,true),300);
 }
 </script>
 </body>
